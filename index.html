@@ -71,9 +71,9 @@
     </div>
 
     <!-- 
-      Preload the frame image to avoid CORS issues on canvas.
-      We are now referencing a local file. You must create an 'assets' folder
-      next to this HTML file and place your frame image inside it.
+      IMPORTANT: Please update the frame image!
+      Replace the 'frame.png' file in your 'assets' folder with your new 3-photo frame.
+      Make sure the photo slots have a transparent background and the file is named 'frame.png'.
     -->
     <img id="frame-image-preload" src="assets/frame.png" class="hidden" alt="Photo booth frame">
 
@@ -83,7 +83,7 @@
 
     <script>
         // --- CONFIGURATION ---
-        const PHOTO_COUNT = 4;
+        const PHOTO_COUNT = 3; // Changed to 3 photos
         const COUNTDOWN_SECONDS = 3;
 
         // --- DOM ELEMENTS ---
@@ -236,12 +236,11 @@
             reelCanvas.width = reelWidth;
             reelCanvas.height = reelHeight;
             
-            // Coordinates for the 4 photo slots on the frame.
+            // Updated coordinates for the 3 photo slots on the new frame.
             const photoPositions = [
-                { x: 75, y: 90,  width: 930, height: 330 },
-                { x: 75, y: 520, width: 930, height: 330 },
-                { x: 75, y: 950, width: 930, height: 330 },
-                { x: 75, y: 1380,width: 930, height: 330 }
+                { x: 70, y: 80,  width: 940, height: 400 },
+                { x: 70, y: 580, width: 940, height: 400 },
+                { x: 70, y: 1080, width: 940, height: 400 }
             ];
 
             try {
@@ -322,9 +321,4 @@
     </script>
 </body>
 </html>
-
-
-
-
-
 
