@@ -49,8 +49,8 @@
 
         <!-- Result Screen -->
         <div id="result-screen" class="hidden text-center">
-             <h2 class="text-3xl font-bold mb-2">Here's Your Photo Reel!</h2>
-             <p class="text-gray-300 mb-6">Scan the QR code with your phone or use the download button.</p>
+             <h2 id="result-title" class="text-3xl font-bold mb-2">Here's Your Photo Reel!</h2>
+             <p id="result-subtitle" class="text-gray-300 mb-6">Scan the QR code with your phone or use the download button.</p>
             <div class="flex flex-col md:flex-row gap-8 items-center justify-center">
                 <div class="w-full md:w-1/2 flex justify-center">
                     <img id="result-image" class="rounded-lg shadow-xl border-4 border-gray-700 max-h-[60vh] w-auto" alt="Your generated photo reel">
@@ -110,11 +110,46 @@
         // --- STATE ---
         let stream;
         let capturedPhotos = [];
+        
+        // --- PAGE LOAD LOGIC ---
+        window.addEventListener('load', () => {
+            // This logic checks if the user landed on the page from a QR code link.
+            // If the URL has a hash starting with '#data:image', it means it contains image data.
+            if (window.location.hash && window.location.hash.startsWith('#data:image')) {
+                const imageData = window.location.hash.substring(1);
+                showSharedImageView(imageData);
+            } else {
+                // Otherwise, start the photobooth application as normal.
+                initializeApp();
+            }
+        });
+
+        // This function displays a simplified result page for users who scanned a QR code.
+        function showSharedImageView(imageData) {
+            welcomeScreen.classList.add('hidden');
+            photoScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+
+            resultImage.src = imageData;
+            downloadBtn.href = imageData;
+
+            // Adjust the text and hide the QR code container for a cleaner view.
+            document.getElementById('result-title').textContent = "Here's Your Photo!";
+            document.getElementById('result-subtitle').textContent = "Save your image using the download button below.";
+            qrcodeContainer.style.display = 'none';
+            
+            // Change the 'Start Over' button to a 'Create Your Own' button.
+            restartBtn.textContent = 'Create Your Own';
+            restartBtn.addEventListener('click', () => {
+                // Reload the page without the hash to go back to the main app.
+                window.location.href = window.location.origin + window.location.pathname;
+            });
+        }
+
 
         // --- INITIALIZATION ---
         function initializeApp() {
             // Dynamically set the image source with a cache-busting parameter
-            // This forces the browser to always load the latest version from the assets folder.
             framePreloadImage.src = `assets/frame.png?v=${new Date().getTime()}`;
 
             startBtn.disabled = true;
@@ -139,13 +174,11 @@
                 framePreloadImage.onload = onAssetsReady;
                 framePreloadImage.onerror = onAssetsError;
             }
+            
+            // Setup event listeners for the main app flow
+            startBtn.addEventListener('click', startPhotoBooth);
+            restartBtn.addEventListener('click', restart);
         }
-
-        // --- EVENT LISTENERS ---
-        startBtn.addEventListener('click', startPhotoBooth);
-        restartBtn.addEventListener('click', restart);
-
-        initializeApp();
         
         // --- FUNCTIONS ---
         async function startPhotoBooth() {
@@ -244,23 +277,15 @@
                     throw new Error("Frame image failed to load or is not available.");
                 }
                 
-                // --- NEW LOGIC FOR NON-TRANSPARENT FRAME ---
-
-                // 1. Draw the non-transparent frame onto the canvas FIRST.
-                // This acts as the background.
                 ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
 
-                // 2. Draw the captured photos on TOP of the frame.
                 for (let i = 0; i < PHOTO_COUNT; i++) {
                     const img = await loadImage(capturedPhotos[i]);
                     const pos = photoPositions[i];
-
-                    // Crop the center of the captured photo to fit the slot
                     const sourceWidth = img.width;
                     const sourceHeight = img.width * (pos.height / pos.width);
                     const sourceX = 0;
                     const sourceY = (img.height - sourceHeight) / 2;
-
                     ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, pos.x, pos.y, pos.width, pos.height);
                 }
                 
@@ -270,30 +295,27 @@
                 return;
             }
 
-            // Display result and generate QR code
             const reelDataURL = reelCanvas.toDataURL('image/jpeg', 0.9);
-
             resultImage.src = reelDataURL;
             downloadBtn.href = reelDataURL;
             
-            // --- QR Code Generation with smaller image ---
-            // Create a smaller version for the QR code to handle data limits, which is crucial for GitHub Pages.
+            // --- NEW QR Code Logic ---
             const qrCanvas = document.getElementById('qr-canvas');
             const qrCtx = qrCanvas.getContext('2d');
-            const qrWidth = 405; // 1080 / 2.66
-            const qrHeight = 720; // 1920 / 2.66
+            const qrWidth = 405;
+            const qrHeight = 720;
             qrCanvas.width = qrWidth;
             qrCanvas.height = qrHeight;
-
-            // Draw the large reel canvas onto the small QR canvas, effectively creating a thumbnail.
             qrCtx.drawImage(reelCanvas, 0, 0, qrWidth, qrHeight);
 
-            // Generate a much smaller data URL from the thumbnail for the QR code.
             const qrDataURL = qrCanvas.toDataURL('image/jpeg', 0.85);
 
-            qrcodeContainer.innerHTML = ''; // Clear previous QR code
+            // Create a shareable URL by putting the smaller image data in the URL hash.
+            const shareableURL = window.location.origin + window.location.pathname + '#' + qrDataURL;
+
+            qrcodeContainer.innerHTML = '';
             new QRCode(qrcodeContainer, {
-                text: qrDataURL, // Use the smaller data URL here.
+                text: shareableURL, // The text is now a URL, which is much shorter and more reliable.
                 width: 192,
                 height: 192,
                 colorDark : "#000000",
