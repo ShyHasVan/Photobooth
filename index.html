@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Photo Booth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pacifico&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .pacifico-font {
+            font-family: 'Pacifico', cursive;
+        }
+        /* Custom animation for the countdown flash */
+        @keyframes flash {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        .flash-animation {
+            animation: flash 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-red-900 text-white flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-4xl mx-auto">
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="text-center p-8 bg-red-800 rounded-2xl shadow-lg">
+            <h1 class="text-4xl md:text-6xl font-bold mb-2">Xin chào & Welcome Freshers!</h1>
+            <p class="pacifico-font text-yellow-400 text-3xl md:text-4xl mb-8">York Vietnamese Society</p>
+            <p class="text-lg text-gray-200 mb-8">Ready to capture some memories? Step into our virtual photo booth!</p>
+            <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-4 px-8 rounded-full text-xl transition-transform transform hover:scale-105 shadow-lg">
+                Start Photo Booth
+            </button>
+            <p id="camera-error" class="text-yellow-300 mt-4 hidden">Could not access the camera. Please check permissions and try again.</p>
+        </div>
+
+        <!-- Photo Taking Screen -->
+        <div id="photo-screen" class="hidden text-center">
+            <div class="relative w-full max-w-lg mx-auto aspect-[4/3] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-gray-700">
+                <video id="video" playsinline autoplay class="w-full h-full object-cover"></video>
+                <div id="overlay" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-6xl font-bold text-white"></div>
+                <div id="flash" class="absolute inset-0 bg-white" style="opacity: 0;"></div>
+                 <div id="photo-counter" class="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white text-lg font-semibold px-4 py-2 rounded-lg"></div>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="hidden text-center">
+             <h2 class="text-3xl font-bold mb-2">Here's Your Photo Reel!</h2>
+             <p class="text-gray-300 mb-6">Scan the QR code with your phone or use the download button.</p>
+            <div class="flex flex-col md:flex-row gap-8 items-center justify-center">
+                <div class="w-full md:w-1/2 flex justify-center">
+                    <img id="result-image" class="rounded-lg shadow-xl border-4 border-gray-700 max-h-[60vh] w-auto" alt="Your generated photo reel">
+                </div>
+                <div class="w-full md:w-1/2 flex flex-col items-center gap-6">
+                    <div id="qrcode" class="p-4 bg-white rounded-lg shadow-lg"></div>
+                     <div class="flex flex-col sm:flex-row gap-4 w-full max-w-xs">
+                        <a id="download-btn" href="#" download="photobooth-reel.jpg" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
+                            Download
+                        </a>
+                        <button id="restart-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
+                            Start Over
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 
+      Preload the frame image to avoid CORS issues on canvas.
+      We are now referencing a local file. You must create an 'assets' folder
+      next to this HTML file and place your frame image inside it.
+    -->
+    <img id="frame-image-preload" src="assets/frame.png" class="hidden" alt="Photo booth frame">
+
+    <!-- Canvases for capturing and composing images (hidden) -->
+    <canvas id="capture-canvas" class="hidden"></canvas>
+    <canvas id="reel-canvas" class="hidden"></canvas>
+
+    <script>
+        // --- CONFIGURATION ---
+        const PHOTO_COUNT = 4;
+        const COUNTDOWN_SECONDS = 3;
+
+        // --- DOM ELEMENTS ---
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const photoScreen = document.getElementById('photo-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const video = document.getElementById('video');
+        const overlay = document.getElementById('overlay');
+        const flash = document.getElementById('flash');
+        const photoCounter = document.getElementById('photo-counter');
+        const resultImage = document.getElementById('result-image');
+        const qrcodeContainer = document.getElementById('qrcode');
+        const captureCanvas = document.getElementById('capture-canvas');
+        const reelCanvas = document.getElementById('reel-canvas');
+        const cameraError = document.getElementById('camera-error');
+        const framePreloadImage = document.getElementById('frame-image-preload');
+
+
+        // --- STATE ---
+        let stream;
+        let capturedPhotos = [];
+
+        // --- INITIALIZATION ---
+        // We need to ensure the frame image is fully loaded before the user can start.
+        // This prevents errors where the script tries to use an image that's not ready.
+        function initializeApp() {
+            startBtn.disabled = true;
+            startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            startBtn.textContent = 'Loading Assets...';
+
+            const onAssetsReady = () => {
+                startBtn.disabled = false;
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                startBtn.textContent = 'Start Photo Booth';
+            };
+            
+            const onAssetsError = () => {
+                 startBtn.textContent = 'Error: Frame Failed to Load';
+                 startBtn.classList.add('bg-red-700', 'cursor-not-allowed');
+                 console.error("The main frame image could not be loaded. Please check the URL and your internet connection.");
+            }
+
+            // Check if the image is already loaded (e.g., from browser cache)
+            if (framePreloadImage.complete) {
+                onAssetsReady();
+            } else {
+                framePreloadImage.onload = onAssetsReady;
+                framePreloadImage.onerror = onAssetsError;
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        startBtn.addEventListener('click', startPhotoBooth);
+        restartBtn.addEventListener('click', restart);
+
+        // Run initialization logic when the script loads
+        initializeApp();
+        
+        // --- FUNCTIONS ---
+        async function startPhotoBooth() {
+            cameraError.classList.add('hidden');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        aspectRatio: 4/3 
+                    } 
+                });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    welcomeScreen.classList.add('hidden');
+                    photoScreen.classList.remove('hidden');
+                    runPhotoSequence();
+                };
+            } catch (err) {
+                console.error("Camera Error:", err);
+                cameraError.classList.remove('hidden');
+            }
+        }
+        
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        async function runPhotoSequence() {
+            for (let i = 0; i < PHOTO_COUNT; i++) {
+                overlay.textContent = `Get Ready...`;
+                photoCounter.textContent = `Photo ${i + 1} of ${PHOTO_COUNT}`;
+                overlay.classList.remove('hidden');
+                await delay(2000); // Time to pose
+
+                for (let j = COUNTDOWN_SECONDS; j > 0; j--) {
+                    overlay.textContent = j;
+                    await delay(1000);
+                }
+
+                overlay.textContent = 'SMILE!';
+                await delay(500);
+                
+                capturePhoto();
+                
+                flash.classList.add('flash-animation');
+                setTimeout(() => flash.classList.remove('flash-animation'), 500);
+                
+                await delay(500);
+                overlay.classList.add('hidden');
+                await delay(1500); // Pause before next photo
+            }
+            generateReel();
+        }
+
+        function capturePhoto() {
+            const videoRatio = video.videoWidth / video.videoHeight;
+            captureCanvas.width = video.videoWidth;
+            captureCanvas.height = video.videoHeight;
+            const ctx = captureCanvas.getContext('2d');
+            // Flip the image horizontally for a mirror effect
+            ctx.translate(video.videoWidth, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            capturedPhotos.push(captureCanvas.toDataURL('image/jpeg', 0.9));
+        }
+
+        /**
+         * A robust way to load an image by returning a promise that resolves when the image's 'onload' event fires.
+         * @param {string} src The source URL of the image.
+         * @returns {Promise<HTMLImageElement>}
+         */
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = (err) => reject(new Error(`Failed to load image with src: ${src}`));
+                img.src = src;
+            });
+        }
+
+        async function generateReel() {
+            photoScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            overlay.textContent = 'Creating your reel...';
+            overlay.classList.remove('hidden');
+
+            const ctx = reelCanvas.getContext('2d');
+            const reelWidth = 1080;
+            const reelHeight = 1920;
+
+            reelCanvas.width = reelWidth;
+            reelCanvas.height = reelHeight;
+            
+            // Coordinates for the 4 photo slots on the frame.
+            const photoPositions = [
+                { x: 75, y: 90,  width: 930, height: 330 },
+                { x: 75, y: 520, width: 930, height: 330 },
+                { x: 75, y: 950, width: 930, height: 330 },
+                { x: 75, y: 1380,width: 930, height: 330 }
+            ];
+
+            try {
+                // Get the preloaded frame image from the DOM
+                const frame = document.getElementById('frame-image-preload');
+
+                // A check to ensure the image is actually loaded before we use it
+                if (!frame || !frame.complete || frame.naturalWidth === 0) {
+                    throw new Error("Frame image failed to load or is not available.");
+                }
+                
+                // --- NEW LOGIC FOR TRANSPARENT FRAME ---
+
+                // 1. Fill the background with a solid color (e.g., white)
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, reelWidth, reelHeight);
+
+                // 2. Draw the captured photos onto the canvas FIRST
+                for (let i = 0; i < PHOTO_COUNT; i++) {
+                    const img = await loadImage(capturedPhotos[i]);
+                    const pos = photoPositions[i];
+
+                    // --- Crop Calculation ---
+                    // We crop the center of the captured (horizontal 4:3) photo
+                    // to fit into the wide photo slot on the frame.
+                    const sourceWidth = img.width;
+                    const sourceHeight = img.width * (pos.height / pos.width);
+                    const sourceX = 0;
+                    const sourceY = (img.height - sourceHeight) / 2;
+
+                    ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, pos.x, pos.y, pos.width, pos.height);
+                }
+
+                // 3. Draw the transparent frame on TOP of the photos
+                ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
+                
+            } catch (error) {
+                console.error("Failed to generate reel:", error);
+                overlay.textContent = 'Error Creating Reel!';
+                return; // Stop if image loading fails
+            }
+
+
+            // Display result and generate QR code
+            reelCanvas.toBlob(blob => {
+                const objectURL = URL.createObjectURL(blob);
+                resultImage.src = objectURL;
+                downloadBtn.href = objectURL;
+                qrcodeContainer.innerHTML = ''; // Clear previous QR code
+                new QRCode(qrcodeContainer, {
+                    text: objectURL,
+                    width: 192,
+                    height: 192,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }, 'image/jpeg', 0.9);
+            
+            overlay.classList.add('hidden');
+        }
+
+        function restart() {
+            // Clear state
+            capturedPhotos = [];
+            qrcodeContainer.innerHTML = '';
+            
+            // Stop camera stream
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            // Reset UI
+            resultScreen.classList.add('hidden');
+            welcomeScreen.classList.remove('hidden');
+        }
+
+    </script>
+</body>
+</html>
+
+
+
+
+
