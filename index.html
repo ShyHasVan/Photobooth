@@ -56,7 +56,9 @@
                     <img id="result-image" class="rounded-lg shadow-xl border-4 border-gray-700 max-h-[60vh] w-auto" alt="Your generated photo reel">
                 </div>
                 <div class="w-full md:w-1/2 flex flex-col items-center gap-6">
-                    <div id="qrcode" class="p-4 bg-white rounded-lg shadow-lg"></div>
+                    <div id="qrcode-wrapper" class="p-4 bg-white rounded-lg shadow-lg w-[224px] h-[224px] flex items-center justify-center">
+                        <!-- The QR code will be generated here, or a loader will be shown -->
+                    </div>
                      <div class="flex flex-col sm:flex-row gap-4 w-full max-w-xs">
                         <a id="download-btn" href="#" download="photobooth-reel.jpg" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
                             Download
@@ -100,7 +102,7 @@
         const flash = document.getElementById('flash');
         const photoCounter = document.getElementById('photo-counter');
         const resultImage = document.getElementById('result-image');
-        const qrcodeContainer = document.getElementById('qrcode');
+        const qrcodeWrapper = document.getElementById('qrcode-wrapper');
         const captureCanvas = document.getElementById('capture-canvas');
         const reelCanvas = document.getElementById('reel-canvas');
         const cameraError = document.getElementById('camera-error');
@@ -113,18 +115,14 @@
         
         // --- PAGE LOAD LOGIC ---
         window.addEventListener('load', () => {
-            // This logic checks if the user landed on the page from a QR code link.
-            // If the URL has a hash starting with '#data:image', it means it contains image data.
             if (window.location.hash && window.location.hash.startsWith('#data:image')) {
                 const imageData = window.location.hash.substring(1);
                 showSharedImageView(imageData);
             } else {
-                // Otherwise, start the photobooth application as normal.
                 initializeApp();
             }
         });
 
-        // This function displays a simplified result page for users who scanned a QR code.
         function showSharedImageView(imageData) {
             welcomeScreen.classList.add('hidden');
             photoScreen.classList.add('hidden');
@@ -132,24 +130,19 @@
 
             resultImage.src = imageData;
             downloadBtn.href = imageData;
-
-            // Adjust the text and hide the QR code container for a cleaner view.
             document.getElementById('result-title').textContent = "Here's Your Photo!";
             document.getElementById('result-subtitle').textContent = "Save your image using the download button below.";
-            qrcodeContainer.style.display = 'none';
+            qrcodeWrapper.parentElement.style.display = 'none';
             
-            // Change the 'Start Over' button to a 'Create Your Own' button.
             restartBtn.textContent = 'Create Your Own';
-            restartBtn.addEventListener('click', () => {
-                // Reload the page without the hash to go back to the main app.
+            restartBtn.onclick = () => { // Use onclick for simplicity here
                 window.location.href = window.location.origin + window.location.pathname;
-            });
+            };
         }
 
 
         // --- INITIALIZATION ---
         function initializeApp() {
-            // Dynamically set the image source with a cache-busting parameter
             framePreloadImage.src = `assets/frame.png?v=${new Date().getTime()}`;
 
             startBtn.disabled = true;
@@ -175,7 +168,6 @@
                 framePreloadImage.onerror = onAssetsError;
             }
             
-            // Setup event listeners for the main app flow
             startBtn.addEventListener('click', startPhotoBooth);
             restartBtn.addEventListener('click', restart);
         }
@@ -211,20 +203,15 @@
                 photoCounter.textContent = `Photo ${i + 1} of ${PHOTO_COUNT}`;
                 overlay.classList.remove('hidden');
                 await delay(2000);
-
                 for (let j = COUNTDOWN_SECONDS; j > 0; j--) {
                     overlay.textContent = j;
                     await delay(1000);
                 }
-
                 overlay.textContent = 'SMILE!';
                 await delay(500);
-                
                 capturePhoto();
-                
                 flash.classList.add('flash-animation');
                 setTimeout(() => flash.classList.remove('flash-animation'), 500);
-                
                 await delay(500);
                 overlay.classList.add('hidden');
                 await delay(1500);
@@ -256,11 +243,13 @@
             resultScreen.classList.remove('hidden');
             overlay.textContent = 'Creating your reel...';
             overlay.classList.remove('hidden');
+            
+            qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center">Generating QR Code...</div>`;
+
 
             const ctx = reelCanvas.getContext('2d');
             const reelWidth = 1080;
             const reelHeight = 1920;
-
             reelCanvas.width = reelWidth;
             reelCanvas.height = reelHeight;
             
@@ -272,7 +261,6 @@
 
             try {
                 const frame = document.getElementById('frame-image-preload');
-
                 if (!frame || !frame.complete || frame.naturalWidth === 0) {
                     throw new Error("Frame image failed to load or is not available.");
                 }
@@ -299,36 +287,41 @@
             resultImage.src = reelDataURL;
             downloadBtn.href = reelDataURL;
             
-            // --- NEW QR Code Logic ---
-            const qrCanvas = document.getElementById('qr-canvas');
-            const qrCtx = qrCanvas.getContext('2d');
-            const qrWidth = 405;
-            const qrHeight = 720;
-            qrCanvas.width = qrWidth;
-            qrCanvas.height = qrHeight;
-            qrCtx.drawImage(reelCanvas, 0, 0, qrWidth, qrHeight);
-
-            const qrDataURL = qrCanvas.toDataURL('image/jpeg', 0.85);
-
-            // Create a shareable URL by putting the smaller image data in the URL hash.
-            const shareableURL = window.location.origin + window.location.pathname + '#' + qrDataURL;
-
-            qrcodeContainer.innerHTML = '';
-            new QRCode(qrcodeContainer, {
-                text: shareableURL, // The text is now a URL, which is much shorter and more reliable.
-                width: 192,
-                height: 192,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
-            });
-            
             overlay.classList.add('hidden');
+
+            // Defer QR code generation slightly to allow the UI to update first
+            setTimeout(() => {
+                const qrCanvas = document.getElementById('qr-canvas');
+                const qrCtx = qrCanvas.getContext('2d');
+                const qrWidth = 405; // Smaller size for a smaller data URI
+                const qrHeight = 720;
+                qrCanvas.width = qrWidth;
+                qrCanvas.height = qrHeight;
+                qrCtx.drawImage(reelCanvas, 0, 0, qrWidth, qrHeight);
+
+                const qrDataURL = qrCanvas.toDataURL('image/jpeg', 0.8);
+                const shareableURL = window.location.origin + window.location.pathname + '#' + qrDataURL;
+
+                qrcodeWrapper.innerHTML = '';
+                try {
+                    new QRCode(qrcodeWrapper, {
+                        text: shareableURL,
+                        width: 192,
+                        height: 192,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.M
+                    });
+                } catch (e) {
+                    console.error("QR Code generation failed:", e);
+                    qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Could not generate QR code. Image might be too large.</div>`;
+                }
+            }, 100);
         }
 
         function restart() {
             capturedPhotos = [];
-            qrcodeContainer.innerHTML = '';
+            qrcodeWrapper.innerHTML = '';
             
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
