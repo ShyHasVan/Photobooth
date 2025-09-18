@@ -80,6 +80,8 @@
     <!-- Canvases for capturing and composing images (hidden) -->
     <canvas id="capture-canvas" class="hidden"></canvas>
     <canvas id="reel-canvas" class="hidden"></canvas>
+    <canvas id="qr-canvas" class="hidden"></canvas>
+
 
     <script>
         // --- CONFIGURATION ---
@@ -269,15 +271,29 @@
             }
 
             // Display result and generate QR code
-            // Using toDataURL creates a self-contained image, which is essential for the QR code to work reliably.
             const reelDataURL = reelCanvas.toDataURL('image/jpeg', 0.9);
 
             resultImage.src = reelDataURL;
             downloadBtn.href = reelDataURL;
             
+            // --- QR Code Generation with smaller image ---
+            // Create a smaller version for the QR code to handle data limits, which is crucial for GitHub Pages.
+            const qrCanvas = document.getElementById('qr-canvas');
+            const qrCtx = qrCanvas.getContext('2d');
+            const qrWidth = 405; // 1080 / 2.66
+            const qrHeight = 720; // 1920 / 2.66
+            qrCanvas.width = qrWidth;
+            qrCanvas.height = qrHeight;
+
+            // Draw the large reel canvas onto the small QR canvas, effectively creating a thumbnail.
+            qrCtx.drawImage(reelCanvas, 0, 0, qrWidth, qrHeight);
+
+            // Generate a much smaller data URL from the thumbnail for the QR code.
+            const qrDataURL = qrCanvas.toDataURL('image/jpeg', 0.85);
+
             qrcodeContainer.innerHTML = ''; // Clear previous QR code
             new QRCode(qrcodeContainer, {
-                text: reelDataURL,
+                text: qrDataURL, // Use the smaller data URL here.
                 width: 192,
                 height: 192,
                 colorDark : "#000000",
