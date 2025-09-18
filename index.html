@@ -73,7 +73,7 @@
     <!-- 
       IMPORTANT: Please update the frame image!
       Replace the 'frame.png' file in your 'assets' folder with your new 3-photo frame.
-      Make sure the photo slots have a transparent background and the file is named 'frame.png'.
+      Make sure the file is named 'frame.png'.
     -->
     <img id="frame-image-preload" src="" class="hidden" alt="Photo booth frame">
 
@@ -83,7 +83,7 @@
 
     <script>
         // --- CONFIGURATION ---
-        const PHOTO_COUNT = 3; // Changed to 3 photos
+        const PHOTO_COUNT = 3;
         const COUNTDOWN_SECONDS = 3;
 
         // --- DOM ELEMENTS ---
@@ -110,8 +110,6 @@
         let capturedPhotos = [];
 
         // --- INITIALIZATION ---
-        // We need to ensure the frame image is fully loaded before the user can start.
-        // This prevents errors where the script tries to use an image that's not ready.
         function initializeApp() {
             // Dynamically set the image source with a cache-busting parameter
             // This forces the browser to always load the latest version from the assets folder.
@@ -133,7 +131,6 @@
                  console.error("The main frame image could not be loaded. Please check the path and filename in your assets folder.");
             }
 
-            // Check if the image is already loaded (e.g., from browser cache)
             if (framePreloadImage.complete) {
                 onAssetsReady();
             } else {
@@ -146,7 +143,6 @@
         startBtn.addEventListener('click', startPhotoBooth);
         restartBtn.addEventListener('click', restart);
 
-        // Run initialization logic when the script loads
         initializeApp();
         
         // --- FUNCTIONS ---
@@ -179,7 +175,7 @@
                 overlay.textContent = `Get Ready...`;
                 photoCounter.textContent = `Photo ${i + 1} of ${PHOTO_COUNT}`;
                 overlay.classList.remove('hidden');
-                await delay(2000); // Time to pose
+                await delay(2000);
 
                 for (let j = COUNTDOWN_SECONDS; j > 0; j--) {
                     overlay.textContent = j;
@@ -196,28 +192,21 @@
                 
                 await delay(500);
                 overlay.classList.add('hidden');
-                await delay(1500); // Pause before next photo
+                await delay(1500);
             }
             generateReel();
         }
 
         function capturePhoto() {
-            const videoRatio = video.videoWidth / video.videoHeight;
             captureCanvas.width = video.videoWidth;
             captureCanvas.height = video.videoHeight;
             const ctx = captureCanvas.getContext('2d');
-            // Flip the image horizontally for a mirror effect
             ctx.translate(video.videoWidth, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
             capturedPhotos.push(captureCanvas.toDataURL('image/jpeg', 0.9));
         }
 
-        /**
-         * A robust way to load an image by returning a promise that resolves when the image's 'onload' event fires.
-         * @param {string} src The source URL of the image.
-         * @returns {Promise<HTMLImageElement>}
-         */
         function loadImage(src) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
@@ -240,7 +229,6 @@
             reelCanvas.width = reelWidth;
             reelCanvas.height = reelHeight;
             
-            // Updated coordinates for the 3 photo slots on the new frame.
             const photoPositions = [
                 { x: 70, y: 80,  width: 940, height: 400 },
                 { x: 70, y: 580, width: 940, height: 400 },
@@ -248,28 +236,24 @@
             ];
 
             try {
-                // Get the preloaded frame image from the DOM
                 const frame = document.getElementById('frame-image-preload');
 
-                // A check to ensure the image is actually loaded before we use it
                 if (!frame || !frame.complete || frame.naturalWidth === 0) {
                     throw new Error("Frame image failed to load or is not available.");
                 }
                 
-                // --- NEW LOGIC FOR TRANSPARENT FRAME ---
+                // --- NEW LOGIC FOR NON-TRANSPARENT FRAME ---
 
-                // 1. Fill the background with a solid color (e.g., white)
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, reelWidth, reelHeight);
+                // 1. Draw the non-transparent frame onto the canvas FIRST.
+                // This acts as the background.
+                ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
 
-                // 2. Draw the captured photos onto the canvas FIRST
+                // 2. Draw the captured photos on TOP of the frame.
                 for (let i = 0; i < PHOTO_COUNT; i++) {
                     const img = await loadImage(capturedPhotos[i]);
                     const pos = photoPositions[i];
 
-                    // --- Crop Calculation ---
-                    // We crop the center of the captured (horizontal 4:3) photo
-                    // to fit into the wide photo slot on the frame.
+                    // Crop the center of the captured photo to fit the slot
                     const sourceWidth = img.width;
                     const sourceHeight = img.width * (pos.height / pos.width);
                     const sourceX = 0;
@@ -277,18 +261,15 @@
 
                     ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, pos.x, pos.y, pos.width, pos.height);
                 }
-
-                // 3. Draw the transparent frame on TOP of the photos
-                ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
                 
             } catch (error) {
                 console.error("Failed to generate reel:", error);
                 overlay.textContent = 'Error Creating Reel!';
-                return; // Stop if image loading fails
+                return;
             }
 
-
             // Display result and generate QR code
+            // Using toDataURL creates a self-contained image, which is essential for the QR code to work reliably.
             const reelDataURL = reelCanvas.toDataURL('image/jpeg', 0.9);
 
             resultImage.src = reelDataURL;
@@ -308,16 +289,13 @@
         }
 
         function restart() {
-            // Clear state
             capturedPhotos = [];
             qrcodeContainer.innerHTML = '';
             
-            // Stop camera stream
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
 
-            // Reset UI
             resultScreen.classList.add('hidden');
             welcomeScreen.classList.remove('hidden');
         }
