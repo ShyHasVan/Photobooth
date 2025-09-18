@@ -75,7 +75,7 @@
       Replace the 'frame.png' file in your 'assets' folder with your new 3-photo frame.
       Make sure the photo slots have a transparent background and the file is named 'frame.png'.
     -->
-    <img id="frame-image-preload" src="assets/frame.png" class="hidden" alt="Photo booth frame">
+    <img id="frame-image-preload" src="" class="hidden" alt="Photo booth frame">
 
     <!-- Canvases for capturing and composing images (hidden) -->
     <canvas id="capture-canvas" class="hidden"></canvas>
@@ -113,6 +113,10 @@
         // We need to ensure the frame image is fully loaded before the user can start.
         // This prevents errors where the script tries to use an image that's not ready.
         function initializeApp() {
+            // Dynamically set the image source with a cache-busting parameter
+            // This forces the browser to always load the latest version from the assets folder.
+            framePreloadImage.src = `assets/frame.png?v=${new Date().getTime()}`;
+
             startBtn.disabled = true;
             startBtn.classList.add('opacity-50', 'cursor-not-allowed');
             startBtn.textContent = 'Loading Assets...';
@@ -126,7 +130,7 @@
             const onAssetsError = () => {
                  startBtn.textContent = 'Error: Frame Failed to Load';
                  startBtn.classList.add('bg-red-700', 'cursor-not-allowed');
-                 console.error("The main frame image could not be loaded. Please check the URL and your internet connection.");
+                 console.error("The main frame image could not be loaded. Please check the path and filename in your assets folder.");
             }
 
             // Check if the image is already loaded (e.g., from browser cache)
