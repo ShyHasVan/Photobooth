@@ -72,10 +72,20 @@
     </div>
     
      <!-- Viewer Screen (for scanned QR codes) -->
-    <div id="viewer-screen" class="hidden text-center p-8 bg-red-800 rounded-2xl shadow-lg">
+    <div id="viewer-screen" class="hidden text-center p-4">
         <div id="viewer-content">
             <h1 class="text-3xl font-bold mb-4">Your Photo Reel</h1>
-            <p id="viewer-status" class="text-lg text-yellow-300">Fetching your image...</p>
+            <p id="viewer-status" class="text-lg text-yellow-300 mb-4">Loading your image...</p>
+            <img id="viewer-image" class="hidden rounded-lg shadow-xl border-4 border-gray-700 max-w-full max-h-[70vh] mx-auto mb-6" alt="Your photo reel">
+            <div id="viewer-controls" class="hidden">
+                 <a id="viewer-download-btn" href="#" download="photobooth-reel.jpg" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
+                    Save to Phone
+                </a>
+                <a href="./index.html" class="mt-4 sm:mt-0 sm:ml-4 bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
+                    Create Your Own
+                </a>
+            </div>
+             <p id="viewer-error" class="text-red-400 mt-4 hidden">Could not find the photo. It may have been deleted or the link is incorrect.</p>
         </div>
     </div>
 
@@ -132,10 +142,10 @@
             }
 
             if (reelId) {
-                // VIEWER MODE: Load the reel and trigger download.
+                // VIEWER MODE: Load the reel for viewing and downloading.
                 appContainer.classList.add('hidden');
                 viewerScreen.classList.remove('hidden');
-                loadAndDownloadReel(reelId);
+                loadReelForViewing(reelId);
             } else {
                 // PHOTOBOOTH MODE: Initialize the main app UI.
                 initializeAppUI();
@@ -149,7 +159,7 @@
                   apiKey: "AIzaSyDLQUtpsWJdanVlmv0tt1gafScAQeN5jj0",
                   authDomain: "photobooth-16410.firebaseapp.com",
                   projectId: "photobooth-16410",
-                  storageBucket: "photobooth-16410.firebasestorage.app",
+                  storageBucket: "photobooth-16410.appspot.com",
                   messagingSenderId: "436533685722",
                   appId: "1:436533685722:web:1a7c4985825987a66524e3",
                   measurementId: "G-6HGC5VLSDJ"
@@ -181,8 +191,13 @@
             }
         }
         
-         async function loadAndDownloadReel(reelId) {
+        async function loadReelForViewing(reelId) {
             const viewerStatus = document.getElementById('viewer-status');
+            const viewerImage = document.getElementById('viewer-image');
+            const viewerControls = document.getElementById('viewer-controls');
+            const viewerDownloadBtn = document.getElementById('viewer-download-btn');
+            const viewerError = document.getElementById('viewer-error');
+
             try {
                 const docRef = doc(db, "reels", reelId);
                 const docSnap = await getDoc(docRef);
@@ -191,37 +206,26 @@
                     const reelData = docSnap.data();
                     const imageUrl = reelData.downloadURL;
                     
-                    viewerStatus.textContent = "Your download will begin shortly...";
-
-                    // Use fetch to get the image as a blob, which works better for cross-origin downloads
-                    const response = await fetch(imageUrl);
-                    const blob = await response.blob();
-                    const blobUrl = window.URL.createObjectURL(blob);
+                    // Set the image source and download link
+                    viewerImage.src = imageUrl;
+                    viewerDownloadBtn.href = imageUrl;
+                    viewerDownloadBtn.download = `vietsoc-reel-${reelId}.jpg`;
                     
-                    // Create a temporary link to trigger the download
-                    const link = document.createElement('a');
-                    link.href = blobUrl;
-                    link.download = `vietsoc-reel-${reelId}.jpg`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    // Revoke the object URL to free up memory
-                    window.URL.revokeObjectURL(blobUrl);
-
-                    viewerStatus.textContent = "Download started! You can close this window.";
-                    viewerStatus.classList.remove("text-yellow-300");
-                    viewerStatus.classList.add("text-green-400");
+                    // Hide loading and show the content
+                    viewerStatus.classList.add('hidden');
+                    viewerImage.classList.remove('hidden');
+                    viewerControls.classList.remove('hidden');
 
                 } else {
-                    viewerStatus.textContent = "Photo not found. The link may be incorrect or expired.";
-                    viewerStatus.classList.add("text-red-400");
+                    viewerStatus.classList.add('hidden');
+                    viewerError.classList.remove('hidden');
                     console.error("No such document!");
                 }
             } catch (error) {
-                viewerStatus.textContent = "An error occurred while preparing your download.";
-                viewerStatus.classList.add("text-red-400");
-                console.error("Error downloading reel:", error);
+                viewerStatus.classList.add('hidden');
+                viewerError.textContent = "An error occurred while fetching the photo.";
+                viewerError.classList.remove('hidden');
+                console.error("Error getting document:", error);
             }
         }
 
@@ -410,3 +414,4 @@
     </script>
 </body>
 </html>
+
