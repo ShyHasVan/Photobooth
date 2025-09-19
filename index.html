@@ -49,14 +49,16 @@
 
         <!-- Result Screen -->
         <div id="result-screen" class="hidden text-center">
-             <h2 class="text-3xl font-bold mb-2">Here's Your Photo Reel!</h2>
-             <p class="text-gray-300 mb-6">Scan the QR code with your phone or use the download button.</p>
+             <h2 id="result-title" class="text-3xl font-bold mb-2">Here's Your Photo Reel!</h2>
+             <p id="result-subtitle" class="text-gray-300 mb-6">Scan the QR code with your phone or use the download button.</p>
             <div class="flex flex-col md:flex-row gap-8 items-center justify-center">
                 <div class="w-full md:w-1/2 flex justify-center">
                     <img id="result-image" class="rounded-lg shadow-xl border-4 border-gray-700 max-h-[60vh] w-auto" alt="Your generated photo reel">
                 </div>
                 <div class="w-full md:w-1/2 flex flex-col items-center gap-6">
-                    <div id="qrcode" class="p-4 bg-white rounded-lg shadow-lg"></div>
+                    <div id="qrcode-wrapper" class="p-4 bg-white rounded-lg shadow-lg w-[224px] h-[224px] flex items-center justify-center">
+                        <!-- The QR code will be generated here, or a loader will be shown -->
+                    </div>
                      <div class="flex flex-col sm:flex-row gap-4 w-full max-w-xs">
                         <a id="download-btn" href="#" download="photobooth-reel.jpg" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
                             Download
@@ -73,17 +75,19 @@
     <!-- 
       IMPORTANT: Please update the frame image!
       Replace the 'frame.png' file in your 'assets' folder with your new 3-photo frame.
-      Make sure the photo slots have a transparent background and the file is named 'frame.png'.
+      Make sure the file is named 'frame.png'.
     -->
-    <img id="frame-image-preload" src="assets/frame.png" class="hidden" alt="Photo booth frame">
+    <img id="frame-image-preload" src="" class="hidden" alt="Photo booth frame">
 
     <!-- Canvases for capturing and composing images (hidden) -->
     <canvas id="capture-canvas" class="hidden"></canvas>
     <canvas id="reel-canvas" class="hidden"></canvas>
+    <canvas id="qr-canvas" class="hidden"></canvas>
+
 
     <script>
         // --- CONFIGURATION ---
-        const PHOTO_COUNT = 3; // Changed to 3 photos
+        const PHOTO_COUNT = 3;
         const COUNTDOWN_SECONDS = 3;
 
         // --- DOM ELEMENTS ---
@@ -98,7 +102,7 @@
         const flash = document.getElementById('flash');
         const photoCounter = document.getElementById('photo-counter');
         const resultImage = document.getElementById('result-image');
-        const qrcodeContainer = document.getElementById('qrcode');
+        const qrcodeWrapper = document.getElementById('qrcode-wrapper');
         const captureCanvas = document.getElementById('capture-canvas');
         const reelCanvas = document.getElementById('reel-canvas');
         const cameraError = document.getElementById('camera-error');
@@ -108,11 +112,39 @@
         // --- STATE ---
         let stream;
         let capturedPhotos = [];
+        
+        // --- PAGE LOAD LOGIC ---
+        window.addEventListener('load', () => {
+            if (window.location.hash && window.location.hash.startsWith('#data:image')) {
+                const imageData = window.location.hash.substring(1);
+                showSharedImageView(imageData);
+            } else {
+                initializeApp();
+            }
+        });
+
+        function showSharedImageView(imageData) {
+            welcomeScreen.classList.add('hidden');
+            photoScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+
+            resultImage.src = imageData;
+            downloadBtn.href = imageData;
+            document.getElementById('result-title').textContent = "Here's Your Photo!";
+            document.getElementById('result-subtitle').textContent = "Save your image using the download button below.";
+            qrcodeWrapper.parentElement.style.display = 'none';
+            
+            restartBtn.textContent = 'Create Your Own';
+            restartBtn.onclick = () => { // Use onclick for simplicity here
+                window.location.href = window.location.origin + window.location.pathname;
+            };
+        }
+
 
         // --- INITIALIZATION ---
-        // We need to ensure the frame image is fully loaded before the user can start.
-        // This prevents errors where the script tries to use an image that's not ready.
         function initializeApp() {
+            framePreloadImage.src = `assets/frame.png?v=${new Date().getTime()}`;
+
             startBtn.disabled = true;
             startBtn.classList.add('opacity-50', 'cursor-not-allowed');
             startBtn.textContent = 'Loading Assets...';
@@ -126,24 +158,19 @@
             const onAssetsError = () => {
                  startBtn.textContent = 'Error: Frame Failed to Load';
                  startBtn.classList.add('bg-red-700', 'cursor-not-allowed');
-                 console.error("The main frame image could not be loaded. Please check the URL and your internet connection.");
+                 console.error("The main frame image could not be loaded. Please check the path and filename in your assets folder.");
             }
 
-            // Check if the image is already loaded (e.g., from browser cache)
             if (framePreloadImage.complete) {
                 onAssetsReady();
             } else {
                 framePreloadImage.onload = onAssetsReady;
                 framePreloadImage.onerror = onAssetsError;
             }
+            
+            startBtn.addEventListener('click', startPhotoBooth);
+            restartBtn.addEventListener('click', restart);
         }
-
-        // --- EVENT LISTENERS ---
-        startBtn.addEventListener('click', startPhotoBooth);
-        restartBtn.addEventListener('click', restart);
-
-        // Run initialization logic when the script loads
-        initializeApp();
         
         // --- FUNCTIONS ---
         async function startPhotoBooth() {
@@ -175,45 +202,33 @@
                 overlay.textContent = `Get Ready...`;
                 photoCounter.textContent = `Photo ${i + 1} of ${PHOTO_COUNT}`;
                 overlay.classList.remove('hidden');
-                await delay(2000); // Time to pose
-
+                await delay(2000);
                 for (let j = COUNTDOWN_SECONDS; j > 0; j--) {
                     overlay.textContent = j;
                     await delay(1000);
                 }
-
                 overlay.textContent = 'SMILE!';
                 await delay(500);
-                
                 capturePhoto();
-                
                 flash.classList.add('flash-animation');
                 setTimeout(() => flash.classList.remove('flash-animation'), 500);
-                
                 await delay(500);
                 overlay.classList.add('hidden');
-                await delay(1500); // Pause before next photo
+                await delay(1500);
             }
             generateReel();
         }
 
         function capturePhoto() {
-            const videoRatio = video.videoWidth / video.videoHeight;
             captureCanvas.width = video.videoWidth;
             captureCanvas.height = video.videoHeight;
             const ctx = captureCanvas.getContext('2d');
-            // Flip the image horizontally for a mirror effect
             ctx.translate(video.videoWidth, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
             capturedPhotos.push(captureCanvas.toDataURL('image/jpeg', 0.9));
         }
 
-        /**
-         * A robust way to load an image by returning a promise that resolves when the image's 'onload' event fires.
-         * @param {string} src The source URL of the image.
-         * @returns {Promise<HTMLImageElement>}
-         */
         function loadImage(src) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
@@ -228,15 +243,16 @@
             resultScreen.classList.remove('hidden');
             overlay.textContent = 'Creating your reel...';
             overlay.classList.remove('hidden');
+            
+            qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center">Generating QR Code...</div>`;
+
 
             const ctx = reelCanvas.getContext('2d');
             const reelWidth = 1080;
             const reelHeight = 1920;
-
             reelCanvas.width = reelWidth;
             reelCanvas.height = reelHeight;
             
-            // Updated coordinates for the 3 photo slots on the new frame.
             const photoPositions = [
                 { x: 70, y: 80,  width: 940, height: 400 },
                 { x: 70, y: 580, width: 940, height: 400 },
@@ -244,76 +260,73 @@
             ];
 
             try {
-                // Get the preloaded frame image from the DOM
                 const frame = document.getElementById('frame-image-preload');
-
-                // A check to ensure the image is actually loaded before we use it
                 if (!frame || !frame.complete || frame.naturalWidth === 0) {
                     throw new Error("Frame image failed to load or is not available.");
                 }
                 
-                // --- NEW LOGIC FOR TRANSPARENT FRAME ---
+                ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
 
-                // 1. Fill the background with a solid color (e.g., white)
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, reelWidth, reelHeight);
-
-                // 2. Draw the captured photos onto the canvas FIRST
                 for (let i = 0; i < PHOTO_COUNT; i++) {
                     const img = await loadImage(capturedPhotos[i]);
                     const pos = photoPositions[i];
-
-                    // --- Crop Calculation ---
-                    // We crop the center of the captured (horizontal 4:3) photo
-                    // to fit into the wide photo slot on the frame.
                     const sourceWidth = img.width;
                     const sourceHeight = img.width * (pos.height / pos.width);
                     const sourceX = 0;
                     const sourceY = (img.height - sourceHeight) / 2;
-
                     ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, pos.x, pos.y, pos.width, pos.height);
                 }
-
-                // 3. Draw the transparent frame on TOP of the photos
-                ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
                 
             } catch (error) {
                 console.error("Failed to generate reel:", error);
                 overlay.textContent = 'Error Creating Reel!';
-                return; // Stop if image loading fails
+                return;
             }
 
-
-            // Display result and generate QR code
             const reelDataURL = reelCanvas.toDataURL('image/jpeg', 0.9);
-
             resultImage.src = reelDataURL;
             downloadBtn.href = reelDataURL;
             
-            qrcodeContainer.innerHTML = ''; // Clear previous QR code
-            new QRCode(qrcodeContainer, {
-                text: reelDataURL,
-                width: 192,
-                height: 192,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
-            });
-            
             overlay.classList.add('hidden');
+
+            // Defer QR code generation slightly to allow the UI to update first
+            setTimeout(() => {
+                const qrCanvas = document.getElementById('qr-canvas');
+                const qrCtx = qrCanvas.getContext('2d');
+                const qrWidth = 405; // Smaller size for a smaller data URI
+                const qrHeight = 720;
+                qrCanvas.width = qrWidth;
+                qrCanvas.height = qrHeight;
+                qrCtx.drawImage(reelCanvas, 0, 0, qrWidth, qrHeight);
+
+                const qrDataURL = qrCanvas.toDataURL('image/jpeg', 0.8);
+                const shareableURL = window.location.origin + window.location.pathname + '#' + qrDataURL;
+
+                qrcodeWrapper.innerHTML = '';
+                try {
+                    new QRCode(qrcodeWrapper, {
+                        text: shareableURL,
+                        width: 192,
+                        height: 192,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.M
+                    });
+                } catch (e) {
+                    console.error("QR Code generation failed:", e);
+                    qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Could not generate QR code. Image might be too large.</div>`;
+                }
+            }, 100);
         }
 
         function restart() {
-            // Clear state
             capturedPhotos = [];
-            qrcodeContainer.innerHTML = '';
+            qrcodeWrapper.innerHTML = '';
             
-            // Stop camera stream
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
 
-            // Reset UI
             resultScreen.classList.add('hidden');
             welcomeScreen.classList.remove('hidden');
         }
