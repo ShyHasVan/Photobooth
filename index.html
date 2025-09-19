@@ -29,8 +29,16 @@
         <div id="welcome-screen" class="text-center p-8 bg-red-800 rounded-2xl shadow-lg">
             <h1 class="text-4xl md:text-6xl font-bold mb-2">Xin chào & Welcome Freshers!</h1>
             <p class="pacifico-font text-yellow-400 text-3xl md:text-4xl mb-8">York Vietnamese Society</p>
-            <p class="text-lg text-gray-200 mb-8">Ready to capture some memories? Step into our virtual photo booth!</p>
-            <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-4 px-8 rounded-full text-xl transition-transform transform hover:scale-105 shadow-lg">
+            <p class="text-lg text-gray-200 mb-4">First, choose your frame:</p>
+            <div id="frame-selection" class="flex justify-center gap-4 md:gap-8 mb-8">
+                <div>
+                    <img id="frame-option-1" src="assets/frame.png" alt="Frame choice 1" class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
+                </div>
+                <div>
+                    <img id="frame-option-2" src="assets/frame2.png" alt="Frame choice 2" class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
+                </div>
+            </div>
+            <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-4 px-8 rounded-full text-xl transition-transform transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                 Start Photo Booth
             </button>
             <p id="camera-error" class="text-yellow-300 mt-4 hidden">Could not access the camera. Please check permissions and try again.</p>
@@ -90,7 +98,8 @@
     </div>
 
 
-    <img id="frame-image-preload" src="" class="hidden" alt="Photo booth frame">
+    <img id="frame-image-preload-1" src="" class="hidden" alt="Photo booth frame 1">
+    <img id="frame-image-preload-2" src="" class="hidden" alt="Photo booth frame 2">
     <canvas id="capture-canvas" class="hidden"></canvas>
     <canvas id="reel-canvas" class="hidden"></canvas>
 
@@ -120,7 +129,10 @@
         const resultImage = document.getElementById('result-image');
         const qrcodeWrapper = document.getElementById('qrcode-wrapper');
         const cameraError = document.getElementById('camera-error');
-        const framePreloadImage = document.getElementById('frame-image-preload');
+        const frameOption1 = document.getElementById('frame-option-1');
+        const frameOption2 = document.getElementById('frame-option-2');
+        const framePreloadImage1 = document.getElementById('frame-image-preload-1');
+        const framePreloadImage2 = document.getElementById('frame-image-preload-2');
         const captureCanvas = document.getElementById('capture-canvas');
         const reelCanvas = document.getElementById('reel-canvas');
         const viewerScreen = document.getElementById('viewer-screen');
@@ -129,6 +141,7 @@
         let db, auth, storage;
         let stream;
         let capturedPhotos = [];
+        let selectedFrame = null;
         
         // --- PAGE LOAD LOGIC ---
         window.addEventListener('load', async () => {
@@ -206,12 +219,10 @@
                     const reelData = docSnap.data();
                     const imageUrl = reelData.downloadURL;
                     
-                    // Set the image source and download link
                     viewerImage.src = imageUrl;
                     viewerDownloadBtn.href = imageUrl;
                     viewerDownloadBtn.download = `vietsoc-reel-${reelId}.jpg`;
                     
-                    // Hide loading and show the content
                     viewerStatus.classList.add('hidden');
                     viewerImage.classList.remove('hidden');
                     viewerControls.classList.remove('hidden');
@@ -231,33 +242,26 @@
 
         // --- PHOTOBOOTH INITIALIZATION ---
         function initializeAppUI() {
-            framePreloadImage.src = `assets/frame.png?v=${new Date().getTime()}`;
+            framePreloadImage1.src = `assets/frame.png?v=${new Date().getTime()}`;
+            framePreloadImage2.src = `assets/frame2.png?v=${new Date().getTime()}`;
 
             startBtn.disabled = true;
-            startBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            startBtn.textContent = 'Loading Assets...';
 
-            const onAssetsReady = () => {
-                startBtn.disabled = false;
-                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                startBtn.textContent = 'Start Photo Booth';
-            };
-            
-            const onAssetsError = () => {
-                 startBtn.textContent = 'Error: Frame Failed to Load';
-                 startBtn.classList.add('bg-red-700', 'cursor-not-allowed');
-                 console.error("The main frame image could not be loaded. Check that `assets/frame.png` exists.");
-            }
-
-            if (framePreloadImage.complete) {
-                onAssetsReady();
-            } else {
-                framePreloadImage.onload = onAssetsReady;
-                framePreloadImage.onerror = onAssetsError;
-            }
+            frameOption1.addEventListener('click', () => selectFrame('assets/frame.png', frameOption1));
+            frameOption2.addEventListener('click', () => selectFrame('assets/frame2.png', frameOption2));
             
             startBtn.addEventListener('click', startPhotoBooth);
             restartBtn.addEventListener('click', restart);
+        }
+
+        function selectFrame(framePath, selectedElement) {
+            selectedFrame = framePath;
+
+            frameOption1.classList.remove('border-yellow-400');
+            frameOption2.classList.remove('border-yellow-400');
+            selectedElement.classList.add('border-yellow-400');
+
+            startBtn.disabled = false;
         }
         
         // --- PHOTOBOOTH FUNCTIONS ---
@@ -274,7 +278,8 @@
                     photoScreen.classList.remove('hidden');
                     runPhotoSequence();
                 };
-            } catch (err) {
+            } catch (err)
+                {
                 console.error("Camera Error:", err);
                 cameraError.classList.remove('hidden');
             }
@@ -332,14 +337,16 @@
             reelCanvas.width = reelWidth;
             reelCanvas.height = reelHeight;
             
-             const photoPositions = [
+            const photoPositions = [
                 { x: 105, y: 204,  width: 1610, height: 904 },
                 { x: 105, y: 1259, width: 1610, height: 904 },
                 { x: 105, y: 2340, width: 1610, height: 904 }
             ];
 
             try {
-                const frame = document.getElementById('frame-image-preload');
+                const frame = selectedFrame === 'assets/frame.png' 
+                    ? framePreloadImage1
+                    : framePreloadImage2;
 
                 for (let i = 0; i < PHOTO_COUNT; i++) {
                     const img = await loadImage(capturedPhotos[i]);
@@ -404,7 +411,12 @@
         function restart() {
             capturedPhotos = [];
             qrcodeWrapper.innerHTML = '';
+            selectedFrame = null;
             
+            frameOption1.classList.remove('border-yellow-400');
+            frameOption2.classList.remove('border-yellow-400');
+            startBtn.disabled = true;
+
             if (stream) { stream.getTracks().forEach(track => track.stop()); }
 
             resultScreen.classList.add('hidden');
