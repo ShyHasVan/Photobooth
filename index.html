@@ -80,7 +80,7 @@
             <a id="viewer-download-btn" href="#" download="photobooth-reel.jpg" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
                 Save to Phone
             </a>
-            <a href="./photobooth.html" class="mt-4 sm:mt-0 sm:ml-4 bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
+            <a href="./index.html" class="mt-4 sm:mt-0 sm:ml-4 bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
                 Create Your Own
             </a>
         </div>
@@ -95,7 +95,7 @@
     <script type="module">
         // --- FIREBASE IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- CONFIGURATION ---
@@ -122,61 +122,70 @@
         const reelCanvas = document.getElementById('reel-canvas');
         const viewerScreen = document.getElementById('viewer-screen');
 
-
         // --- FIREBASE & APP STATE ---
         let db, auth;
         let stream;
         let capturedPhotos = [];
-        let isFirebaseReady = false;
         
         // --- PAGE LOAD LOGIC ---
         window.addEventListener('load', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const reelId = urlParams.get('id');
 
-            await initializeFirebase();
+            // Initialize Firebase first; it's required for both modes.
+            const firebaseReady = await initializeFirebase();
+
+            if (!firebaseReady) {
+                // Error message is set inside initializeFirebase()
+                return;
+            }
 
             if (reelId) {
-                // VIEWER MODE
-                if (isFirebaseReady) {
-                    appContainer.classList.add('hidden');
-                    viewerScreen.classList.remove('hidden');
-                    loadReelFromFirestore(reelId);
-                } else {
-                    document.body.innerHTML = `<div class="text-center p-8 text-white"><h1>Backend Connection Failed</h1><p>Could not load the photo. Please check your connection or contact the administrator.</p></div>`;
-                }
+                // VIEWER MODE: Load the specific reel from Firestore.
+                appContainer.classList.add('hidden');
+                viewerScreen.classList.remove('hidden');
+                loadReelFromFirestore(reelId);
             } else {
-                // PHOTOBOOTH MODE
-                initializeApp();
+                // PHOTOBOOTH MODE: Initialize the main app UI.
+                initializeAppUI();
             }
         });
         
         async function initializeFirebase() {
              try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+                const firebaseConfig = {
+                  apiKey: "AIzaSyDLQUtpsWJdanVlmv0tt1gafScAQeN5jj0",
+                  authDomain: "photobooth-16410.firebaseapp.com",
+                  projectId: "photobooth-16410",
+                  storageBucket: "photobooth-16410.appspot.com",
+                  messagingSenderId: "436533685722",
+                  appId: "1:436533685722:web:1a7c4985825987a66524e3",
+                  measurementId: "G-6HGC5VLSDJ"
+                };
 
-                if (!firebaseConfig) {
-                    console.error("Firebase config is missing. QR code generation will be disabled.");
-                    isFirebaseReady = false;
-                    return;
+                if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR")) {
+                    console.error("Firebase config is missing or incomplete.");
+                    document.body.innerHTML = `<div class="text-center p-8 text-white"><h1>Configuration Error</h1><p>The Firebase configuration is missing. Please add your project's configuration to the script.</p></div>`;
+                    return false;
                 }
 
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-
-                // Sign in the user
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                console.log("Firebase initialized and user signed in.");
-                isFirebaseReady = true;
+                
+                await signInAnonymously(auth);
+                
+                console.log("Firebase initialized and user signed in anonymously.");
+                return true;
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
-                isFirebaseReady = false;
+                 if (error.code === 'auth/configuration-not-found') {
+                    document.body.innerHTML = `<div class="text-center p-8 text-white"><h1>Firebase Setup Incomplete</h1><p class="mb-4">The photobooth can't sign in.</p><p class="bg-red-800 p-4 rounded-lg"><strong>Action Required:</strong> Please go to your Firebase project console, navigate to <strong>Authentication -> Sign-in method</strong>, and enable the <strong>Anonymous</strong> provider.</p></div>`;
+                } else {
+                    document.body.innerHTML = `<div class="text-center p-8 text-white"><h1>Backend Connection Error</h1><p>The application could not connect to its backend services. Please check the Firebase configuration and console for errors.</p><p class="text-sm text-gray-400 mt-2">${error.message}</p></div>`;
+                }
+                return false;
             }
         }
         
@@ -188,8 +197,7 @@
             const viewerError = document.getElementById('viewer-error');
 
             try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const docRef = doc(db, `/artifacts/${appId}/public/data/reels`, reelId);
+                const docRef = doc(db, "reels", reelId);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -213,9 +221,9 @@
             }
         }
 
-
         // --- PHOTOBOOTH INITIALIZATION ---
-        function initializeApp() {
+        function initializeAppUI() {
+            // Use cache-busting to ensure the latest frame is loaded.
             framePreloadImage.src = `assets/frame.png?v=${new Date().getTime()}`;
 
             startBtn.disabled = true;
@@ -231,11 +239,13 @@
             const onAssetsError = () => {
                  startBtn.textContent = 'Error: Frame Failed to Load';
                  startBtn.classList.add('bg-red-700', 'cursor-not-allowed');
-                 console.error("The main frame image could not be loaded. Please check the path and filename in your assets folder.");
+                 console.error("The main frame image could not be loaded. Check that `assets/frame.png` exists.");
             }
 
-            if (framePreloadImage.complete) { onAssetsReady(); } 
-            else {
+            // Check if the image is already loaded (from cache).
+            if (framePreloadImage.complete) {
+                onAssetsReady();
+            } else {
                 framePreloadImage.onload = onAssetsReady;
                 framePreloadImage.onerror = onAssetsError;
             }
@@ -317,27 +327,35 @@
             reelCanvas.height = reelHeight;
             
             const photoPositions = [
-                { x: 70, y: 80,  width: 940, height: 400 },
-                { x: 70, y: 580, width: 940, height: 400 },
-                { x: 70, y: 1080, width: 940, height: 400 }
+                { x: 70, y: 80,  width: 940, height: 528.75 },
+                { x: 70, y: 680, width: 940, height: 528.75 },
+                { x: 70, y: 1280, width: 940, height: 528.75 }
             ];
 
             try {
                 const frame = document.getElementById('frame-image-preload');
 
-                // NEW DRAWING ORDER FOR TRANSPARENT FRAME
-                // 1. Draw the captured photos first.
+                // Draw photos first
                 for (let i = 0; i < PHOTO_COUNT; i++) {
                     const img = await loadImage(capturedPhotos[i]);
                     const pos = photoPositions[i];
-                    const sourceWidth = img.width;
-                    const sourceHeight = img.width * (pos.height / pos.width);
-                    const sourceX = 0;
-                    const sourceY = (img.height - sourceHeight) / 2;
+                    
+                    const sourceAspect = img.width / img.height;
+                    const destAspect = pos.width / pos.height;
+                    
+                    let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
+
+                    if (sourceAspect > destAspect) { // Source image is wider
+                        sourceWidth = img.height * destAspect;
+                        sourceX = (img.width - sourceWidth) / 2;
+                    } else { // Source image is taller
+                        sourceHeight = img.width / destAspect;
+                        sourceY = (img.height - sourceHeight) / 2;
+                    }
                     ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, pos.x, pos.y, pos.width, pos.height);
                 }
 
-                // 2. Draw the transparent frame on top.
+                // Draw transparent frame on top
                 ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
 
             } catch (error) {
@@ -350,19 +368,13 @@
             resultImage.src = reelDataURL;
             downloadBtn.href = reelDataURL;
             
-            if (!isFirebaseReady) {
-                qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center text-sm p-4">QR code generation is unavailable. Please use the Download button.</div>`;
-                return;
-            }
-
             try {
-                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                 const docRef = await addDoc(collection(db, `/artifacts/${appId}/public/data/reels`), {
+                 const docRef = await addDoc(collection(db, "reels"), {
                     imageData: reelDataURL,
                     createdAt: serverTimestamp()
                 });
                 
-                const viewerURL = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
+                const viewerURL = `${window.location.href.split('?')[0]}?id=${docRef.id}`;
                 
                 qrcodeWrapper.innerHTML = '';
                 new QRCode(qrcodeWrapper, {
@@ -393,5 +405,4 @@
     </script>
 </body>
 </html>
-
 
