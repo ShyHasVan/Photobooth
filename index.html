@@ -14,7 +14,6 @@
         .pacifico-font {
             font-family: 'Pacifico', cursive;
         }
-        /* Custom animation for the countdown flash */
         @keyframes flash {
             0%, 100% { opacity: 0; }
             50% { opacity: 1; }
@@ -25,7 +24,7 @@
     </style>
 </head>
 <body class="bg-red-900 text-white flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-4xl mx-auto">
+    <div id="app-container" class="w-full max-w-4xl mx-auto">
         <!-- Welcome Screen -->
         <div id="welcome-screen" class="text-center p-8 bg-red-800 rounded-2xl shadow-lg">
             <h1 class="text-4xl md:text-6xl font-bold mb-2">Xin chào & Welcome Freshers!</h1>
@@ -57,7 +56,7 @@
                 </div>
                 <div class="w-full md:w-1/2 flex flex-col items-center gap-6">
                     <div id="qrcode-wrapper" class="p-4 bg-white rounded-lg shadow-lg w-[224px] h-[224px] flex items-center justify-center">
-                        <!-- The QR code will be generated here, or a loader will be shown -->
+                        <!-- QR code or loader -->
                     </div>
                      <div class="flex flex-col sm:flex-row gap-4 w-full max-w-xs">
                         <a id="download-btn" href="#" download="photobooth-reel.jpg" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
@@ -71,26 +70,40 @@
             </div>
         </div>
     </div>
+    
+     <!-- Viewer Screen (for scanned QR codes) -->
+    <div id="viewer-screen" class="hidden text-center p-4">
+        <h1 class="text-3xl font-bold mb-4">Your Photo Reel</h1>
+        <div id="viewer-loading" class="text-lg">Loading your image...</div>
+        <img id="viewer-image" class="hidden rounded-lg shadow-xl border-4 border-gray-700 max-w-full max-h-[70vh] mx-auto mb-6" alt="Your photo reel">
+        <div id="viewer-controls" class="hidden">
+            <a id="viewer-download-btn" href="#" download="photobooth-reel.jpg" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
+                Save to Phone
+            </a>
+            <a href="./photobooth.html" class="mt-4 sm:mt-0 sm:ml-4 bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
+                Create Your Own
+            </a>
+        </div>
+         <p id="viewer-error" class="text-yellow-300 mt-4 hidden">Could not find the photo. It may have been deleted or the link is incorrect.</p>
+    </div>
 
-    <!-- 
-      IMPORTANT: Please update the frame image!
-      Replace the 'frame.png' file in your 'assets' folder with your new 3-photo frame.
-      Make sure the file is named 'frame.png'.
-    -->
+
     <img id="frame-image-preload" src="" class="hidden" alt="Photo booth frame">
-
-    <!-- Canvases for capturing and composing images (hidden) -->
     <canvas id="capture-canvas" class="hidden"></canvas>
     <canvas id="reel-canvas" class="hidden"></canvas>
-    <canvas id="qr-canvas" class="hidden"></canvas>
 
+    <script type="module">
+        // --- FIREBASE IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script>
         // --- CONFIGURATION ---
         const PHOTO_COUNT = 3;
         const COUNTDOWN_SECONDS = 3;
 
         // --- DOM ELEMENTS ---
+        const appContainer = document.getElementById('app-container');
         const welcomeScreen = document.getElementById('welcome-screen');
         const photoScreen = document.getElementById('photo-screen');
         const resultScreen = document.getElementById('result-screen');
@@ -103,45 +116,99 @@
         const photoCounter = document.getElementById('photo-counter');
         const resultImage = document.getElementById('result-image');
         const qrcodeWrapper = document.getElementById('qrcode-wrapper');
-        const captureCanvas = document.getElementById('capture-canvas');
-        const reelCanvas = document.getElementById('reel-canvas');
         const cameraError = document.getElementById('camera-error');
         const framePreloadImage = document.getElementById('frame-image-preload');
+        const captureCanvas = document.getElementById('capture-canvas');
+        const reelCanvas = document.getElementById('reel-canvas');
+        const viewerScreen = document.getElementById('viewer-screen');
 
 
-        // --- STATE ---
+        // --- FIREBASE & APP STATE ---
+        let db, auth;
         let stream;
         let capturedPhotos = [];
         
         // --- PAGE LOAD LOGIC ---
-        window.addEventListener('load', () => {
-            if (window.location.hash && window.location.hash.startsWith('#data:image')) {
-                const imageData = window.location.hash.substring(1);
-                showSharedImageView(imageData);
+        window.addEventListener('load', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const reelId = urlParams.get('id');
+
+            await initializeFirebase();
+
+            if (reelId) {
+                // VIEWER MODE
+                appContainer.classList.add('hidden');
+                viewerScreen.classList.remove('hidden');
+                loadReelFromFirestore(reelId);
             } else {
+                // PHOTOBOOTH MODE
                 initializeApp();
             }
         });
+        
+        async function initializeFirebase() {
+             try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
 
-        function showSharedImageView(imageData) {
-            welcomeScreen.classList.add('hidden');
-            photoScreen.classList.add('hidden');
-            resultScreen.classList.remove('hidden');
+                if (!firebaseConfig) {
+                    console.error("Firebase config is missing.");
+                    alert("This application is not configured correctly. Please contact the administrator.");
+                    return;
+                }
 
-            resultImage.src = imageData;
-            downloadBtn.href = imageData;
-            document.getElementById('result-title').textContent = "Here's Your Photo!";
-            document.getElementById('result-subtitle').textContent = "Save your image using the download button below.";
-            qrcodeWrapper.parentElement.style.display = 'none';
-            
-            restartBtn.textContent = 'Create Your Own';
-            restartBtn.onclick = () => { // Use onclick for simplicity here
-                window.location.href = window.location.origin + window.location.pathname;
-            };
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Sign in the user
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                console.log("Firebase initialized and user signed in.");
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                alert("Could not connect to the backend services. Please try again later.");
+            }
+        }
+        
+         async function loadReelFromFirestore(reelId) {
+            const viewerLoading = document.getElementById('viewer-loading');
+            const viewerImage = document.getElementById('viewer-image');
+            const viewerControls = document.getElementById('viewer-controls');
+            const viewerDownloadBtn = document.getElementById('viewer-download-btn');
+            const viewerError = document.getElementById('viewer-error');
+
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const docRef = doc(db, `/artifacts/${appId}/public/data/reels`, reelId);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const reelData = docSnap.data();
+                    viewerImage.src = reelData.imageData;
+                    viewerDownloadBtn.href = reelData.imageData;
+                    
+                    viewerLoading.classList.add('hidden');
+                    viewerImage.classList.remove('hidden');
+                    viewerControls.classList.remove('hidden');
+                } else {
+                    viewerLoading.classList.add('hidden');
+                    viewerError.classList.remove('hidden');
+                    console.error("No such document!");
+                }
+            } catch (error) {
+                viewerLoading.classList.add('hidden');
+                viewerError.textContent = "An error occurred while fetching the photo.";
+                viewerError.classList.remove('hidden');
+                console.error("Error getting document:", error);
+            }
         }
 
 
-        // --- INITIALIZATION ---
+        // --- PHOTOBOOTH INITIALIZATION ---
         function initializeApp() {
             framePreloadImage.src = `assets/frame.png?v=${new Date().getTime()}`;
 
@@ -161,9 +228,8 @@
                  console.error("The main frame image could not be loaded. Please check the path and filename in your assets folder.");
             }
 
-            if (framePreloadImage.complete) {
-                onAssetsReady();
-            } else {
+            if (framePreloadImage.complete) { onAssetsReady(); } 
+            else {
                 framePreloadImage.onload = onAssetsReady;
                 framePreloadImage.onerror = onAssetsError;
             }
@@ -172,15 +238,12 @@
             restartBtn.addEventListener('click', restart);
         }
         
-        // --- FUNCTIONS ---
+        // --- PHOTOBOOTH FUNCTIONS ---
         async function startPhotoBooth() {
             cameraError.classList.add('hidden');
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: 'user',
-                        aspectRatio: 4/3 
-                    } 
+                    video: { facingMode: 'user', aspectRatio: 4/3 } 
                 });
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
@@ -212,8 +275,6 @@
                 capturePhoto();
                 flash.classList.add('flash-animation');
                 setTimeout(() => flash.classList.remove('flash-animation'), 500);
-                await delay(500);
-                overlay.classList.add('hidden');
                 await delay(1500);
             }
             generateReel();
@@ -241,11 +302,7 @@
         async function generateReel() {
             photoScreen.classList.add('hidden');
             resultScreen.classList.remove('hidden');
-            overlay.textContent = 'Creating your reel...';
-            overlay.classList.remove('hidden');
-            
-            qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center">Generating QR Code...</div>`;
-
+            qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center">Generating Link...</div>`;
 
             const ctx = reelCanvas.getContext('2d');
             const reelWidth = 1080;
@@ -261,12 +318,9 @@
 
             try {
                 const frame = document.getElementById('frame-image-preload');
-                if (!frame || !frame.complete || frame.naturalWidth === 0) {
-                    throw new Error("Frame image failed to load or is not available.");
-                }
-                
-                ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
 
+                // NEW DRAWING ORDER FOR TRANSPARENT FRAME
+                // 1. Draw the captured photos first.
                 for (let i = 0; i < PHOTO_COUNT; i++) {
                     const img = await loadImage(capturedPhotos[i]);
                     const pos = photoPositions[i];
@@ -276,10 +330,13 @@
                     const sourceY = (img.height - sourceHeight) / 2;
                     ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, pos.x, pos.y, pos.width, pos.height);
                 }
-                
+
+                // 2. Draw the transparent frame on top.
+                ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
+
             } catch (error) {
-                console.error("Failed to generate reel:", error);
-                overlay.textContent = 'Error Creating Reel!';
+                console.error("Failed to draw reel:", error);
+                qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Error creating image.</div>`;
                 return;
             }
 
@@ -287,45 +344,36 @@
             resultImage.src = reelDataURL;
             downloadBtn.href = reelDataURL;
             
-            overlay.classList.add('hidden');
-
-            // Defer QR code generation slightly to allow the UI to update first
-            setTimeout(() => {
-                const qrCanvas = document.getElementById('qr-canvas');
-                const qrCtx = qrCanvas.getContext('2d');
-                const qrWidth = 405; // Smaller size for a smaller data URI
-                const qrHeight = 720;
-                qrCanvas.width = qrWidth;
-                qrCanvas.height = qrHeight;
-                qrCtx.drawImage(reelCanvas, 0, 0, qrWidth, qrHeight);
-
-                const qrDataURL = qrCanvas.toDataURL('image/jpeg', 0.8);
-                const shareableURL = window.location.origin + window.location.pathname + '#' + qrDataURL;
-
+            try {
+                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                 const docRef = await addDoc(collection(db, `/artifacts/${appId}/public/data/reels`), {
+                    imageData: reelDataURL,
+                    createdAt: serverTimestamp()
+                });
+                
+                const viewerURL = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
+                
                 qrcodeWrapper.innerHTML = '';
-                try {
-                    new QRCode(qrcodeWrapper, {
-                        text: shareableURL,
-                        width: 192,
-                        height: 192,
-                        colorDark : "#000000",
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.M
-                    });
-                } catch (e) {
-                    console.error("QR Code generation failed:", e);
-                    qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Could not generate QR code. Image might be too large.</div>`;
-                }
-            }, 100);
+                new QRCode(qrcodeWrapper, {
+                    text: viewerURL,
+                    width: 192,
+                    height: 192,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+
+            } catch (e) {
+                console.error("Error adding document or creating QR Code: ", e);
+                qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Could not save image to generate link.</div>`;
+            }
         }
 
         function restart() {
             capturedPhotos = [];
             qrcodeWrapper.innerHTML = '';
             
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
+            if (stream) { stream.getTracks().forEach(track => track.stop()); }
 
             resultScreen.classList.add('hidden');
             welcomeScreen.classList.remove('hidden');
