@@ -127,6 +127,7 @@
         let db, auth;
         let stream;
         let capturedPhotos = [];
+        let isFirebaseReady = false;
         
         // --- PAGE LOAD LOGIC ---
         window.addEventListener('load', async () => {
@@ -137,9 +138,13 @@
 
             if (reelId) {
                 // VIEWER MODE
-                appContainer.classList.add('hidden');
-                viewerScreen.classList.remove('hidden');
-                loadReelFromFirestore(reelId);
+                if (isFirebaseReady) {
+                    appContainer.classList.add('hidden');
+                    viewerScreen.classList.remove('hidden');
+                    loadReelFromFirestore(reelId);
+                } else {
+                    document.body.innerHTML = `<div class="text-center p-8 text-white"><h1>Backend Connection Failed</h1><p>Could not load the photo. Please check your connection or contact the administrator.</p></div>`;
+                }
             } else {
                 // PHOTOBOOTH MODE
                 initializeApp();
@@ -152,8 +157,8 @@
                 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
 
                 if (!firebaseConfig) {
-                    console.error("Firebase config is missing.");
-                    alert("This application is not configured correctly. Please contact the administrator.");
+                    console.error("Firebase config is missing. QR code generation will be disabled.");
+                    isFirebaseReady = false;
                     return;
                 }
 
@@ -168,9 +173,10 @@
                     await signInAnonymously(auth);
                 }
                 console.log("Firebase initialized and user signed in.");
+                isFirebaseReady = true;
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
-                alert("Could not connect to the backend services. Please try again later.");
+                isFirebaseReady = false;
             }
         }
         
@@ -344,6 +350,11 @@
             resultImage.src = reelDataURL;
             downloadBtn.href = reelDataURL;
             
+            if (!isFirebaseReady) {
+                qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center text-sm p-4">QR code generation is unavailable. Please use the Download button.</div>`;
+                return;
+            }
+
             try {
                  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                  const docRef = await addDoc(collection(db, `/artifacts/${appId}/public/data/reels`), {
@@ -382,4 +393,5 @@
     </script>
 </body>
 </html>
+
 
