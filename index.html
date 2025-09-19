@@ -72,19 +72,11 @@
     </div>
     
      <!-- Viewer Screen (for scanned QR codes) -->
-    <div id="viewer-screen" class="hidden text-center p-4">
-        <h1 class="text-3xl font-bold mb-4">Your Photo Reel</h1>
-        <div id="viewer-loading" class="text-lg">Loading your image...</div>
-        <img id="viewer-image" class="hidden rounded-lg shadow-xl border-4 border-gray-700 max-w-full max-h-[70vh] mx-auto mb-6" alt="Your photo reel">
-        <div id="viewer-controls" class="hidden">
-            <a id="viewer-download-btn" href="#" download="photobooth-reel.jpg" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
-                Save to Phone
-            </a>
-            <a href="./index.html" class="mt-4 sm:mt-0 sm:ml-4 bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
-                Create Your Own
-            </a>
+    <div id="viewer-screen" class="hidden text-center p-8 bg-red-800 rounded-2xl shadow-lg">
+        <div id="viewer-content">
+            <h1 class="text-3xl font-bold mb-4">Your Photo Reel</h1>
+            <p id="viewer-status" class="text-lg text-yellow-300">Fetching your image...</p>
         </div>
-         <p id="viewer-error" class="text-yellow-300 mt-4 hidden">Could not find the photo. It may have been deleted or the link is incorrect.</p>
     </div>
 
 
@@ -97,8 +89,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-
+        import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         // --- CONFIGURATION ---
         const PHOTO_COUNT = 3;
@@ -141,26 +132,27 @@
             }
 
             if (reelId) {
+                // VIEWER MODE: Load the reel and trigger download.
                 appContainer.classList.add('hidden');
                 viewerScreen.classList.remove('hidden');
-                loadReelFromFirestore(reelId);
+                loadAndDownloadReel(reelId);
             } else {
+                // PHOTOBOOTH MODE: Initialize the main app UI.
                 initializeAppUI();
             }
         });
         
         async function initializeFirebase() {
              try {
-                // For Firebase JS SDK v7.20.0 and later, measurementId is optional
                 const firebaseConfig = {
                   apiKey: "AIzaSyDLQUtpsWJdanVlmv0tt1gafScAQeN5jj0",
                   authDomain: "photobooth-16410.firebaseapp.com",
                   projectId: "photobooth-16410",
-                  storageBucket: "photobooth-16410.firebasestorage.app",
+                  storageBucket: "photobooth-16410.appspot.com",
                   messagingSenderId: "436533685722",
                   appId: "1:436533685722:web:1a7c4985825987a66524e3",
                   measurementId: "G-6HGC5VLSDJ"
-                 };
+                };
 
                 if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR")) {
                     console.error("Firebase config is missing or incomplete.");
@@ -188,38 +180,51 @@
             }
         }
         
-         async function loadReelFromFirestore(reelId) {
-            const viewerLoading = document.getElementById('viewer-loading');
-            const viewerImage = document.getElementById('viewer-image');
-            const viewerControls = document.getElementById('viewer-controls');
-            const viewerDownloadBtn = document.getElementById('viewer-download-btn');
-            const viewerError = document.getElementById('viewer-error');
-
+         async function loadAndDownloadReel(reelId) {
+            const viewerStatus = document.getElementById('viewer-status');
             try {
                 const docRef = doc(db, "reels", reelId);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
                     const reelData = docSnap.data();
-                    viewerImage.src = reelData.downloadURL;
-                    viewerDownloadBtn.href = reelData.downloadURL;
+                    const imageUrl = reelData.downloadURL;
                     
-                    viewerLoading.classList.add('hidden');
-                    viewerImage.classList.remove('hidden');
-                    viewerControls.classList.remove('hidden');
+                    viewerStatus.textContent = "Your download will begin shortly...";
+
+                    // Use fetch to get the image as a blob, which works better for cross-origin downloads
+                    const response = await fetch(imageUrl);
+                    const blob = await response.blob();
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    
+                    // Create a temporary link to trigger the download
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = `vietsoc-reel-${reelId}.jpg`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Revoke the object URL to free up memory
+                    window.URL.revokeObjectURL(blobUrl);
+
+                    viewerStatus.textContent = "Download started! You can close this window.";
+                    viewerStatus.classList.remove("text-yellow-300");
+                    viewerStatus.classList.add("text-green-400");
+
                 } else {
-                    viewerLoading.classList.add('hidden');
-                    viewerError.classList.remove('hidden');
+                    viewerStatus.textContent = "Photo not found. The link may be incorrect or expired.";
+                    viewerStatus.classList.add("text-red-400");
                     console.error("No such document!");
                 }
             } catch (error) {
-                viewerLoading.classList.add('hidden');
-                viewerError.textContent = "An error occurred while fetching the photo.";
-                viewerError.classList.remove('hidden');
-                console.error("Error getting document:", error);
+                viewerStatus.textContent = "An error occurred while preparing your download.";
+                viewerStatus.classList.add("text-red-400");
+                console.error("Error downloading reel:", error);
             }
         }
 
+        // --- PHOTOBOOTH INITIALIZATION ---
         function initializeAppUI() {
             framePreloadImage.src = `assets/frame.png?v=${new Date().getTime()}`;
 
@@ -250,6 +255,7 @@
             restartBtn.addEventListener('click', restart);
         }
         
+        // --- PHOTOBOOTH FUNCTIONS ---
         async function startPhotoBooth() {
             cameraError.classList.add('hidden');
             try {
@@ -313,7 +319,7 @@
         async function generateReel() {
             photoScreen.classList.add('hidden');
             resultScreen.classList.remove('hidden');
-            qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center">Generating & Uploading...</div>`;
+            qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center">Generating Link...</div>`;
 
             const ctx = reelCanvas.getContext('2d');
             const reelWidth = 1821;
@@ -321,14 +327,15 @@
             reelCanvas.width = reelWidth;
             reelCanvas.height = reelHeight;
             
-            const photoPositions = [
-                { x: 70, y: 123,  width: 1681, height: 1147 },
-                { x: 70, y: 1433, width: 1681, height: 1147 },
-                { x: 70, y: 2744, width: 1681, height: 1147 }
+             const photoPositions = [
+                { x: 130, y: 155,  width: 1561, height: 878 },
+                { x: 130, y: 1205, width: 1561, height: 878 },
+                { x: 130, y: 2255, width: 1561, height: 878 }
             ];
 
             try {
                 const frame = document.getElementById('frame-image-preload');
+
                 for (let i = 0; i < PHOTO_COUNT; i++) {
                     const img = await loadImage(capturedPhotos[i]);
                     const pos = photoPositions[i];
@@ -347,44 +354,46 @@
                     }
                     ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, pos.x, pos.y, pos.width, pos.height);
                 }
+
                 ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
+
             } catch (error) {
                 console.error("Failed to draw reel:", error);
                 qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Error creating image.</div>`;
                 return;
             }
 
-            const localPreviewUrl = reelCanvas.toDataURL('image/jpeg', 0.9);
-            resultImage.src = localPreviewUrl;
-            downloadBtn.href = localPreviewUrl;
+            const reelDataURL = reelCanvas.toDataURL('image/jpeg', 0.95);
+            resultImage.src = reelDataURL;
+            downloadBtn.href = reelDataURL;
             
-            reelCanvas.toBlob(async (blob) => {
-                try {
-                    const storageRef = ref(storage, `reels/${Date.now()}.jpg`);
-                    const uploadTask = await uploadBytes(storageRef, blob);
-                    const downloadURL = await getDownloadURL(uploadTask.ref);
+            try {
+                 const fileName = `reels/${Date.now()}.jpg`;
+                 const storageRef = ref(storage, fileName);
+                 const uploadResult = await uploadString(storageRef, reelDataURL, 'data_url');
+                 const downloadURL = await getDownloadURL(uploadResult.ref);
 
-                    const docRef = await addDoc(collection(db, "reels"), {
-                        downloadURL: downloadURL,
-                        createdAt: serverTimestamp()
-                    });
-                    
-                    const viewerURL = `${window.location.href.split('?')[0]}?id=${docRef.id}`;
-                    
-                    qrcodeWrapper.innerHTML = '';
-                    new QRCode(qrcodeWrapper, {
-                        text: viewerURL,
-                        width: 192,
-                        height: 192,
-                        colorDark : "#000000",
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.M
-                    });
-                } catch (e) {
-                    console.error("Error uploading to Firebase or creating QR Code: ", e);
-                    qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm p-2">Upload failed. QR code not available. You can still download the image directly.</div>`;
-                }
-            }, 'image/jpeg', 0.9);
+                 const docRef = await addDoc(collection(db, "reels"), {
+                    downloadURL: downloadURL,
+                    createdAt: serverTimestamp()
+                });
+                
+                const viewerURL = `${window.location.href.split('?')[0]}?id=${docRef.id}`;
+                
+                qrcodeWrapper.innerHTML = '';
+                new QRCode(qrcodeWrapper, {
+                    text: viewerURL,
+                    width: 192,
+                    height: 192,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+
+            } catch (e) {
+                console.error("Error uploading to Firebase or creating QR Code: ", e);
+                qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Could not save image to generate link.</div>`;
+            }
         }
 
         function restart() {
