@@ -30,12 +30,15 @@
             <h1 class="text-4xl md:text-6xl font-bold mb-2">Xin chào & Welcome Freshers!</h1>
             <p class="pacifico-font text-yellow-400 text-3xl md:text-4xl mb-8">York Vietnamese Society</p>
             <p class="text-lg text-gray-200 mb-4">First, choose your frame:</p>
-            <div id="frame-selection" class="flex justify-center gap-4 md:gap-8 mb-8">
+            <div id="frame-selection" class="flex flex-wrap justify-center gap-4 md:gap-8 mb-8">
                 <div>
                     <img id="frame-option-1" src="assets/frame.png" alt="Frame choice 1" class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
                 </div>
                 <div>
                     <img id="frame-option-2" src="assets/frame2.png" alt="Frame choice 2" class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
+                </div>
+                <div>
+                    <img id="frame-option-3" src="assets/frame3.png" alt="Frame choice 3" class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
                 </div>
             </div>
             <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-4 px-8 rounded-full text-xl transition-transform transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
@@ -100,6 +103,7 @@
 
     <img id="frame-image-preload-1" src="" class="hidden" alt="Photo booth frame 1">
     <img id="frame-image-preload-2" src="" class="hidden" alt="Photo booth frame 2">
+    <img id="frame-image-preload-3" src="" class="hidden" alt="Photo booth frame 3">
     <canvas id="capture-canvas" class="hidden"></canvas>
     <canvas id="reel-canvas" class="hidden"></canvas>
 
@@ -131,8 +135,10 @@
         const cameraError = document.getElementById('camera-error');
         const frameOption1 = document.getElementById('frame-option-1');
         const frameOption2 = document.getElementById('frame-option-2');
+        const frameOption3 = document.getElementById('frame-option-3');
         const framePreloadImage1 = document.getElementById('frame-image-preload-1');
         const framePreloadImage2 = document.getElementById('frame-image-preload-2');
+        const framePreloadImage3 = document.getElementById('frame-image-preload-3');
         const captureCanvas = document.getElementById('capture-canvas');
         const reelCanvas = document.getElementById('reel-canvas');
         const viewerScreen = document.getElementById('viewer-screen');
@@ -244,11 +250,13 @@
         function initializeAppUI() {
             framePreloadImage1.src = `assets/frame.png?v=${new Date().getTime()}`;
             framePreloadImage2.src = `assets/frame2.png?v=${new Date().getTime()}`;
+            framePreloadImage3.src = `assets/frame3.png?v=${new Date().getTime()}`;
 
             startBtn.disabled = true;
 
             frameOption1.addEventListener('click', () => selectFrame('assets/frame.png', frameOption1));
             frameOption2.addEventListener('click', () => selectFrame('assets/frame2.png', frameOption2));
+            frameOption3.addEventListener('click', () => selectFrame('assets/frame3.png', frameOption3));
             
             startBtn.addEventListener('click', startPhotoBooth);
             restartBtn.addEventListener('click', restart);
@@ -259,6 +267,7 @@
 
             frameOption1.classList.remove('border-yellow-400');
             frameOption2.classList.remove('border-yellow-400');
+            frameOption3.classList.remove('border-yellow-400');
             selectedElement.classList.add('border-yellow-400');
 
             startBtn.disabled = false;
@@ -344,9 +353,14 @@
             ];
 
             try {
-                const frame = selectedFrame === 'assets/frame.png' 
-                    ? framePreloadImage1
-                    : framePreloadImage2;
+                let frame;
+                if (selectedFrame === 'assets/frame.png') {
+                    frame = framePreloadImage1;
+                } else if (selectedFrame === 'assets/frame2.png') {
+                    frame = framePreloadImage2;
+                } else {
+                    frame = framePreloadImage3;
+                }
 
                 for (let i = 0; i < PHOTO_COUNT; i++) {
                     const img = await loadImage(capturedPhotos[i]);
@@ -415,6 +429,7 @@
             
             frameOption1.classList.remove('border-yellow-400');
             frameOption2.classList.remove('border-yellow-400');
+            frameOption3.classList.remove('border-yellow-400');
             startBtn.disabled = true;
 
             if (stream) { stream.getTracks().forEach(track => track.stop()); }
@@ -426,3 +441,4 @@
     </script>
 </body>
 </html>
+
