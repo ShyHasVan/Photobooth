@@ -1,448 +1,498 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Photo Booth</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pacifico&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .pacifico-font {
-            font-family: 'Pacifico', cursive;
-        }
-        @keyframes flash {
-            0%, 100% { opacity: 0; }
-            50% { opacity: 1; }
-        }
-        .flash-animation {
-            animation: flash 0.5s ease-in-out;
-        }
-        .text-shadow {
-            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Photo Booth</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pacifico&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .pacifico-font { font-family: 'Pacifico', cursive; }
+    @keyframes flash { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+    .flash-animation { animation: flash 0.5s ease-in-out; }
+    .text-shadow { text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8); }
+  </style>
 </head>
+
 <body class="bg-red-900 text-white flex items-center justify-center min-h-screen p-4">
-    <div id="app-container" class="w-full max-w-4xl mx-auto">
-        <!-- Welcome Screen -->
-        <div id="welcome-screen" class="text-center p-8 bg-red-800 rounded-2xl shadow-lg">
-            <h1 class="text-4xl md:text-6xl font-bold mb-2">Xin chào & Welcome Freshers!</h1>
-            <p class="pacifico-font text-yellow-400 text-3xl md:text-4xl mb-8">York Vietnamese Society</p>
-            <p class="text-lg text-gray-200 mb-4">First, choose your frame:</p>
-            <div id="frame-selection" class="flex flex-wrap justify-center gap-4 md:gap-8 mb-8">
-                <div>
-                    <img id="frame-option-1" src="assets/frame.png" alt="Frame choice 1" class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
-                </div>
-                <div>
-                    <img id="frame-option-2" src="assets/frame2.png" alt="Frame choice 2" class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
-                </div>
-                <div>
-                    <img id="frame-option-3" src="assets/frame3.png" alt="Frame choice 3" class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
-                </div>
-            </div>
-            <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-4 px-8 rounded-full text-xl transition-transform transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                Start Photo Booth
+  <div id="app-container" class="w-full max-w-4xl mx-auto">
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" class="text-center p-8 bg-red-800 rounded-2xl shadow-lg">
+      <h1 class="text-4xl md:text-6xl font-bold mb-2">Xin chào & Welcome Freshers!</h1>
+      <p class="pacifico-font text-yellow-400 text-3xl md:text-4xl mb-8">York Vietnamese Society</p>
+      <p class="text-lg text-gray-200 mb-4">First, choose your frame:</p>
+
+      <div id="frame-selection" class="flex flex-wrap justify-center gap-4 md:gap-8 mb-8">
+        <div>
+          <img id="frame-option-1" src="assets/frame.png" alt="Frame choice 1"
+               class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
+        </div>
+        <div>
+          <img id="frame-option-2" src="assets/frame2.png" alt="Frame choice 2"
+               class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
+        </div>
+        <div>
+          <img id="frame-option-3" src="assets/frame3.png" alt="Frame choice 3"
+               class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
+        </div>
+        <!-- NEW: 4th frame option -->
+        <div>
+          <img id="frame-option-4" src="assets/frame4.png" alt="Frame choice 4"
+               class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
+        </div>
+      </div>
+
+      <button id="start-btn"
+              class="bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-4 px-8 rounded-full text-xl transition-transform transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled>
+        Start Photo Booth
+      </button>
+      <p id="camera-error" class="text-yellow-300 mt-4 hidden">Could not access the camera. Please check permissions and try again.</p>
+    </div>
+
+    <!-- Photo Taking Screen -->
+    <div id="photo-screen" class="hidden text-center">
+      <div class="relative w-full max-w-lg mx-auto aspect-[4/3] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-gray-700">
+        <video id="video" playsinline autoplay class="w-full h-full object-cover"></video>
+        <div id="overlay" class="absolute inset-0 flex items-center justify-center text-6xl font-bold text-white text-shadow"></div>
+        <div id="flash" class="absolute inset-0 bg-white" style="opacity: 0;"></div>
+        <div id="photo-counter" class="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white text-lg font-semibold px-4 py-2 rounded-lg"></div>
+      </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-screen" class="hidden text-center">
+      <h2 id="result-title" class="text-3xl font-bold mb-2">Here's Your Photo Reel!</h2>
+      <p id="result-subtitle" class="text-gray-300 mb-6">Scan the QR code with your phone or use the download button.</p>
+
+      <div class="flex flex-col md:flex-row gap-8 items-center justify-center">
+        <div class="w-full md:w-1/2 flex justify-center">
+          <img id="result-image" class="rounded-lg shadow-xl border-4 border-gray-700 max-h-[60vh] w-auto" alt="Your generated photo reel">
+        </div>
+
+        <div class="w-full md:w-1/2 flex flex-col items-center gap-6">
+          <div id="qrcode-wrapper" class="p-4 bg-white rounded-lg shadow-lg w-[224px] h-[224px] flex items-center justify-center">
+            <!-- QR code or loader -->
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-4 w-full max-w-xs">
+            <a id="download-btn" href="#" download="photobooth-reel.jpg"
+               class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
+              Download
+            </a>
+            <button id="restart-btn"
+                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
+              Start Over
             </button>
-            <p id="camera-error" class="text-yellow-300 mt-4 hidden">Could not access the camera. Please check permissions and try again.</p>
+          </div>
         </div>
-
-        <!-- Photo Taking Screen -->
-        <div id="photo-screen" class="hidden text-center">
-            <div class="relative w-full max-w-lg mx-auto aspect-[4/3] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-gray-700">
-                <video id="video" playsinline autoplay class="w-full h-full object-cover"></video>
-                <div id="overlay" class="absolute inset-0 flex items-center justify-center text-6xl font-bold text-white text-shadow"></div>
-                <div id="flash" class="absolute inset-0 bg-white" style="opacity: 0;"></div>
-                 <div id="photo-counter" class="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white text-lg font-semibold px-4 py-2 rounded-lg"></div>
-            </div>
-        </div>
-
-        <!-- Result Screen -->
-        <div id="result-screen" class="hidden text-center">
-             <h2 id="result-title" class="text-3xl font-bold mb-2">Here's Your Photo Reel!</h2>
-             <p id="result-subtitle" class="text-gray-300 mb-6">Scan the QR code with your phone or use the download button.</p>
-            <div class="flex flex-col md:flex-row gap-8 items-center justify-center">
-                <div class="w-full md:w-1/2 flex justify-center">
-                    <img id="result-image" class="rounded-lg shadow-xl border-4 border-gray-700 max-h-[60vh] w-auto" alt="Your generated photo reel">
-                </div>
-                <div class="w-full md:w-1/2 flex flex-col items-center gap-6">
-                    <div id="qrcode-wrapper" class="p-4 bg-white rounded-lg shadow-lg w-[224px] h-[224px] flex items-center justify-center">
-                        <!-- QR code or loader -->
-                    </div>
-                     <div class="flex flex-col sm:flex-row gap-4 w-full max-w-xs">
-                        <a id="download-btn" href="#" download="photobooth-reel.jpg" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
-                            Download
-                        </a>
-                        <button id="restart-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105">
-                            Start Over
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
-    
-     <!-- Viewer Screen (for scanned QR codes) -->
-    <div id="viewer-screen" class="hidden text-center p-4">
-        <div id="viewer-content">
-            <h1 class="text-3xl font-bold mb-4">Your Photo Reel</h1>
-            <p id="viewer-status" class="text-lg text-yellow-300 mb-4">Loading your image...</p>
-            <img id="viewer-image" class="hidden rounded-lg shadow-xl border-4 border-gray-700 max-w-full max-h-[70vh] mx-auto mb-6" alt="Your photo reel">
-            <div id="viewer-controls" class="hidden">
-                 <a id="viewer-download-btn" href="#" download="photobooth-reel.jpg" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
-                    Save to Phone
-                </a>
-                <a href="./index.html" class="mt-4 sm:mt-0 sm:ml-4 bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
-                    Create Your Own
-                </a>
-            </div>
-             <p id="viewer-error" class="text-red-400 mt-4 hidden">Could not find the photo. It may have been deleted or the link is incorrect.</p>
-        </div>
+  </div>
+
+  <!-- Viewer Screen (for scanned QR codes) -->
+  <div id="viewer-screen" class="hidden text-center p-4">
+    <div id="viewer-content">
+      <h1 class="text-3xl font-bold mb-4">Your Photo Reel</h1>
+      <p id="viewer-status" class="text-lg text-yellow-300 mb-4">Loading your image...</p>
+      <img id="viewer-image" class="hidden rounded-lg shadow-xl border-4 border-gray-700 max-w-full max-h-[70vh] mx-auto mb-6" alt="Your photo reel">
+      <div id="viewer-controls" class="hidden">
+        <a id="viewer-download-btn" href="#" download="photobooth-reel.jpg"
+           class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
+          Save to Phone
+        </a>
+        <a href="./index.html"
+           class="mt-4 sm:mt-0 sm:ml-4 bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 inline-block">
+          Create Your Own
+        </a>
+      </div>
+      <p id="viewer-error" class="text-red-400 mt-4 hidden">Could not find the photo. It may have been deleted or the link is incorrect.</p>
     </div>
+  </div>
 
+  <img id="frame-image-preload-1" src="" class="hidden" alt="Photo booth frame 1">
+  <img id="frame-image-preload-2" src="" class="hidden" alt="Photo booth frame 2">
+  <img id="frame-image-preload-3" src="" class="hidden" alt="Photo booth frame 3">
+  <!-- NEW: 4th preload -->
+  <img id="frame-image-preload-4" src="" class="hidden" alt="Photo booth frame 4">
 
-    <img id="frame-image-preload-1" src="" class="hidden" alt="Photo booth frame 1">
-    <img id="frame-image-preload-2" src="" class="hidden" alt="Photo booth frame 2">
-    <img id="frame-image-preload-3" src="" class="hidden" alt="Photo booth frame 3">
-    <canvas id="capture-canvas" class="hidden"></canvas>
-    <canvas id="reel-canvas" class="hidden"></canvas>
+  <canvas id="capture-canvas" class="hidden"></canvas>
+  <canvas id="reel-canvas" class="hidden"></canvas>
 
-    <script type="module">
-        // --- FIREBASE IMPORTS ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+  <script type="module">
+    // --- FIREBASE IMPORTS ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, addDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-        // --- CONFIGURATION ---
-        const PHOTO_COUNT = 3;
-        const COUNTDOWN_SECONDS = 3;
+    // --- CONFIGURATION ---
+    const PHOTO_COUNT = 3;
+    const COUNTDOWN_SECONDS = 3;
 
-        // --- DOM ELEMENTS ---
-        const appContainer = document.getElementById('app-container');
-        const welcomeScreen = document.getElementById('welcome-screen');
-        const photoScreen = document.getElementById('photo-screen');
-        const resultScreen = document.getElementById('result-screen');
-        const startBtn = document.getElementById('start-btn');
-        const restartBtn = document.getElementById('restart-btn');
-        const downloadBtn = document.getElementById('download-btn');
-        const video = document.getElementById('video');
-        const overlay = document.getElementById('overlay');
-        const flash = document.getElementById('flash');
-        const photoCounter = document.getElementById('photo-counter');
-        const resultImage = document.getElementById('result-image');
-        const qrcodeWrapper = document.getElementById('qrcode-wrapper');
-        const cameraError = document.getElementById('camera-error');
-        const frameOption1 = document.getElementById('frame-option-1');
-        const frameOption2 = document.getElementById('frame-option-2');
-        const frameOption3 = document.getElementById('frame-option-3');
-        const framePreloadImage1 = document.getElementById('frame-image-preload-1');
-        const framePreloadImage2 = document.getElementById('frame-image-preload-2');
-        const framePreloadImage3 = document.getElementById('frame-image-preload-3');
-        const captureCanvas = document.getElementById('capture-canvas');
-        const reelCanvas = document.getElementById('reel-canvas');
-        const viewerScreen = document.getElementById('viewer-screen');
+    // --- DOM ELEMENTS ---
+    const appContainer = document.getElementById('app-container');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const photoScreen = document.getElementById('photo-screen');
+    const resultScreen = document.getElementById('result-screen');
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const flash = document.getElementById('flash');
+    const photoCounter = document.getElementById('photo-counter');
+    const resultImage = document.getElementById('result-image');
+    const qrcodeWrapper = document.getElementById('qrcode-wrapper');
+    const cameraError = document.getElementById('camera-error');
 
-        // --- FIREBASE & APP STATE ---
-        let db, auth, storage;
-        let stream;
-        let capturedPhotos = [];
-        let selectedFrame = null;
-        
-        // --- PAGE LOAD LOGIC ---
-        window.addEventListener('load', async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const reelId = urlParams.get('id');
+    const frameOption1 = document.getElementById('frame-option-1');
+    const frameOption2 = document.getElementById('frame-option-2');
+    const frameOption3 = document.getElementById('frame-option-3');
+    // NEW
+    const frameOption4 = document.getElementById('frame-option-4');
 
-            const firebaseReady = await initializeFirebase();
+    const framePreloadImage1 = document.getElementById('frame-image-preload-1');
+    const framePreloadImage2 = document.getElementById('frame-image-preload-2');
+    const framePreloadImage3 = document.getElementById('frame-image-preload-3');
+    // NEW
+    const framePreloadImage4 = document.getElementById('frame-image-preload-4');
 
-            if (!firebaseReady) {
-                return;
-            }
+    const captureCanvas = document.getElementById('capture-canvas');
+    const reelCanvas = document.getElementById('reel-canvas');
+    const viewerScreen = document.getElementById('viewer-screen');
 
-            if (reelId) {
-                // VIEWER MODE: Load the reel for viewing and downloading.
-                appContainer.classList.add('hidden');
-                viewerScreen.classList.remove('hidden');
-                loadReelForViewing(reelId);
-            } else {
-                // PHOTOBOOTH MODE: Initialize the main app UI.
-                initializeAppUI();
-            }
+    // --- FIREBASE & APP STATE ---
+    let db, auth, storage;
+    let stream;
+    let capturedPhotos = [];
+    let selectedFrame = null;
+
+    // --- PAGE LOAD LOGIC ---
+    window.addEventListener('load', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const reelId = urlParams.get('id');
+
+      const firebaseReady = await initializeFirebase();
+      if (!firebaseReady) return;
+
+      if (reelId) {
+        // VIEWER MODE
+        appContainer.classList.add('hidden');
+        viewerScreen.classList.remove('hidden');
+        loadReelForViewing(reelId);
+      } else {
+        // PHOTOBOOTH MODE
+        initializeAppUI();
+      }
+    });
+
+    async function initializeFirebase() {
+      try {
+        const firebaseConfig = {
+          apiKey: "AIzaSyDLQUtpsWJdanVlmv0tt1gafScAQeN5jj0",
+          authDomain: "photobooth-16410.firebaseapp.com",
+          projectId: "photobooth-16410",
+          storageBucket: "photobooth-16410.firebasestorage.app",
+          messagingSenderId: "436533685722",
+          appId: "1:436533685722:web:1a7c4985825987a66524e3",
+          measurementId: "G-6HGC5VLSDJ"
+        };
+
+        if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR")) {
+          console.error("Firebase config is missing or incomplete.");
+          document.body.innerHTML = `
+            <div class="text-center p-8 text-white">
+              <h1>Configuration Error</h1>
+              <p>The Firebase configuration is missing. Please add your project's configuration to the script.</p>
+            </div>`;
+          return false;
+        }
+
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        storage = getStorage(app);
+
+        await signInAnonymously(auth);
+
+        console.log("Firebase initialized and user signed in anonymously.");
+        return true;
+      } catch (error) {
+        console.error("Firebase Initialization Error:", error);
+
+        if (error.code === 'auth/configuration-not-found') {
+          document.body.innerHTML = `
+            <div class="text-center p-8 text-white">
+              <h1>Firebase Setup Incomplete</h1>
+              <p class="mb-4">The photobooth can't sign in.</p>
+              <p class="bg-red-800 p-4 rounded-lg">
+                <strong>Action Required:</strong> Please go to your Firebase project console, navigate to
+                <strong>Authentication -> Sign-in method</strong>, and enable the <strong>Anonymous</strong> provider.
+              </p>
+            </div>`;
+        } else {
+          document.body.innerHTML = `
+            <div class="text-center p-8 text-white">
+              <h1>Backend Connection Error</h1>
+              <p>The application could not connect to its backend services. Please check the Firebase configuration and console for errors.</p>
+              <p class="text-sm text-gray-400 mt-2">${error.message}</p>
+            </div>`;
+        }
+        return false;
+      }
+    }
+
+    async function loadReelForViewing(reelId) {
+      const viewerStatus = document.getElementById('viewer-status');
+      const viewerImage = document.getElementById('viewer-image');
+      const viewerControls = document.getElementById('viewer-controls');
+      const viewerDownloadBtn = document.getElementById('viewer-download-btn');
+      const viewerError = document.getElementById('viewer-error');
+
+      try {
+        const docRef = doc(db, "reels", reelId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const reelData = docSnap.data();
+          const imageUrl = reelData.downloadURL;
+
+          viewerImage.src = imageUrl;
+          viewerDownloadBtn.href = imageUrl;
+          viewerDownloadBtn.download = `vietsoc-reel-${reelId}.jpg`;
+
+          viewerStatus.classList.add('hidden');
+          viewerImage.classList.remove('hidden');
+          viewerControls.classList.remove('hidden');
+        } else {
+          viewerStatus.classList.add('hidden');
+          viewerError.classList.remove('hidden');
+          console.error("No such document!");
+        }
+      } catch (error) {
+        viewerStatus.classList.add('hidden');
+        viewerError.textContent = "An error occurred while fetching the photo.";
+        viewerError.classList.remove('hidden');
+        console.error("Error getting document:", error);
+      }
+    }
+
+    // --- PHOTOBOOTH INITIALIZATION ---
+    function initializeAppUI() {
+      framePreloadImage1.src = `assets/frame.png?v=${new Date().getTime()}`;
+      framePreloadImage2.src = `assets/frame2.png?v=${new Date().getTime()}`;
+      framePreloadImage3.src = `assets/frame3.png?v=${new Date().getTime()}`;
+      // NEW
+      framePreloadImage4.src = `assets/frame4.png?v=${new Date().getTime()}`;
+
+      startBtn.disabled = true;
+
+      frameOption1.addEventListener('click', () => selectFrame('assets/frame.png', frameOption1));
+      frameOption2.addEventListener('click', () => selectFrame('assets/frame2.png', frameOption2));
+      frameOption3.addEventListener('click', () => selectFrame('assets/frame3.png', frameOption3));
+      // NEW
+      frameOption4.addEventListener('click', () => selectFrame('assets/frame4.png', frameOption4));
+
+      startBtn.addEventListener('click', startPhotoBooth);
+      restartBtn.addEventListener('click', restart);
+    }
+
+    function selectFrame(framePath, selectedElement) {
+      selectedFrame = framePath;
+
+      frameOption1.classList.remove('border-yellow-400');
+      frameOption2.classList.remove('border-yellow-400');
+      frameOption3.classList.remove('border-yellow-400');
+      frameOption4.classList.remove('border-yellow-400');
+
+      selectedElement.classList.add('border-yellow-400');
+      startBtn.disabled = false;
+    }
+
+    // --- PHOTOBOOTH FUNCTIONS ---
+    async function startPhotoBooth() {
+      cameraError.classList.add('hidden');
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', aspectRatio: 4 / 3 }
         });
-        
-        async function initializeFirebase() {
-             try {
-                // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-                const firebaseConfig = {
-                  apiKey: "AIzaSyDLQUtpsWJdanVlmv0tt1gafScAQeN5jj0",
-                  authDomain: "photobooth-16410.firebaseapp.com",
-                  projectId: "photobooth-16410",
-                  storageBucket: "photobooth-16410.firebasestorage.app",
-                  messagingSenderId: "436533685722",
-                  appId: "1:436533685722:web:1a7c4985825987a66524e3",
-                  measurementId: "G-6HGC5VLSDJ"
-                };
 
-                if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR")) {
-                    console.error("Firebase config is missing or incomplete.");
-                    document.body.innerHTML = `<div class="text-center p-8 text-white"><h1>Configuration Error</h1><p>The Firebase configuration is missing. Please add your project's configuration to the script.</p></div>`;
-                    return false;
-                }
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          video.play();
+          welcomeScreen.classList.add('hidden');
+          photoScreen.classList.remove('hidden');
+          runPhotoSequence();
+        };
+      } catch (err) {
+        console.error("Camera Error:", err);
+        cameraError.classList.remove('hidden');
+      }
+    }
 
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                storage = getStorage(app);
-                
-                await signInAnonymously(auth);
-                
-                console.log("Firebase initialized and user signed in anonymously.");
-                return true;
-            } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-                 if (error.code === 'auth/configuration-not-found') {
-                    document.body.innerHTML = `<div class="text-center p-8 text-white"><h1>Firebase Setup Incomplete</h1><p class="mb-4">The photobooth can't sign in.</p><p class="bg-red-800 p-4 rounded-lg"><strong>Action Required:</strong> Please go to your Firebase project console, navigate to <strong>Authentication -> Sign-in method</strong>, and enable the <strong>Anonymous</strong> provider.</p></div>`;
-                } else {
-                    document.body.innerHTML = `<div class="text-center p-8 text-white"><h1>Backend Connection Error</h1><p>The application could not connect to its backend services. Please check the Firebase configuration and console for errors.</p><p class="text-sm text-gray-400 mt-2">${error.message}</p></div>`;
-                }
-                return false;
-            }
-        }
-        
-        async function loadReelForViewing(reelId) {
-            const viewerStatus = document.getElementById('viewer-status');
-            const viewerImage = document.getElementById('viewer-image');
-            const viewerControls = document.getElementById('viewer-controls');
-            const viewerDownloadBtn = document.getElementById('viewer-download-btn');
-            const viewerError = document.getElementById('viewer-error');
+    const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-            try {
-                const docRef = doc(db, "reels", reelId);
-                const docSnap = await getDoc(docRef);
+    async function runPhotoSequence() {
+      for (let i = 0; i < PHOTO_COUNT; i++) {
+        overlay.textContent = `Get Ready...`;
+        photoCounter.textContent = `Photo ${i + 1} of ${PHOTO_COUNT}`;
+        overlay.classList.remove('hidden');
+        await delay(2000);
 
-                if (docSnap.exists()) {
-                    const reelData = docSnap.data();
-                    const imageUrl = reelData.downloadURL;
-                    
-                    viewerImage.src = imageUrl;
-                    viewerDownloadBtn.href = imageUrl;
-                    viewerDownloadBtn.download = `vietsoc-reel-${reelId}.jpg`;
-                    
-                    viewerStatus.classList.add('hidden');
-                    viewerImage.classList.remove('hidden');
-                    viewerControls.classList.remove('hidden');
-
-                } else {
-                    viewerStatus.classList.add('hidden');
-                    viewerError.classList.remove('hidden');
-                    console.error("No such document!");
-                }
-            } catch (error) {
-                viewerStatus.classList.add('hidden');
-                viewerError.textContent = "An error occurred while fetching the photo.";
-                viewerError.classList.remove('hidden');
-                console.error("Error getting document:", error);
-            }
+        for (let j = COUNTDOWN_SECONDS; j > 0; j--) {
+          overlay.textContent = j;
+          await delay(1000);
         }
 
-        // --- PHOTOBOOTH INITIALIZATION ---
-        function initializeAppUI() {
-            framePreloadImage1.src = `assets/frame.png?v=${new Date().getTime()}`;
-            framePreloadImage2.src = `assets/frame2.png?v=${new Date().getTime()}`;
-            framePreloadImage3.src = `assets/frame3.png?v=${new Date().getTime()}`;
+        overlay.textContent = 'SMILE!';
+        await delay(500);
 
-            startBtn.disabled = true;
+        capturePhoto();
 
-            frameOption1.addEventListener('click', () => selectFrame('assets/frame.png', frameOption1));
-            frameOption2.addEventListener('click', () => selectFrame('assets/frame2.png', frameOption2));
-            frameOption3.addEventListener('click', () => selectFrame('assets/frame3.png', frameOption3));
-            
-            startBtn.addEventListener('click', startPhotoBooth);
-            restartBtn.addEventListener('click', restart);
+        flash.classList.add('flash-animation');
+        setTimeout(() => flash.classList.remove('flash-animation'), 500);
+
+        await delay(1500);
+      }
+      generateReel();
+    }
+
+    function capturePhoto() {
+      captureCanvas.width = video.videoWidth;
+      captureCanvas.height = video.videoHeight;
+
+      const ctx = captureCanvas.getContext('2d');
+      ctx.translate(video.videoWidth, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+
+      capturedPhotos.push(captureCanvas.toDataURL('image/jpeg', 0.9));
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load image with src: ${src}`));
+        img.src = src;
+      });
+    }
+
+    async function generateReel() {
+      photoScreen.classList.add('hidden');
+      resultScreen.classList.remove('hidden');
+      qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center">Generating Link...</div>`;
+
+      const ctx = reelCanvas.getContext('2d');
+      const reelWidth = 1821;
+      const reelHeight = 4096;
+      reelCanvas.width = reelWidth;
+      reelCanvas.height = reelHeight;
+
+      const photoPositions = [
+        { x: 105, y: 204, width: 1610, height: 904 },
+        { x: 105, y: 1259, width: 1610, height: 904 },
+        { x: 105, y: 2340, width: 1610, height: 904 }
+      ];
+
+      try {
+        let frame;
+        if (selectedFrame === 'assets/frame.png') {
+          frame = framePreloadImage1;
+        } else if (selectedFrame === 'assets/frame2.png') {
+          frame = framePreloadImage2;
+        } else if (selectedFrame === 'assets/frame3.png') {
+          frame = framePreloadImage3;
+        } else {
+          frame = framePreloadImage4; // assets/frame4.png
         }
 
-        function selectFrame(framePath, selectedElement) {
-            selectedFrame = framePath;
+        for (let i = 0; i < PHOTO_COUNT; i++) {
+          const img = await loadImage(capturedPhotos[i]);
+          const pos = photoPositions[i];
 
-            frameOption1.classList.remove('border-yellow-400');
-            frameOption2.classList.remove('border-yellow-400');
-            frameOption3.classList.remove('border-yellow-400');
-            selectedElement.classList.add('border-yellow-400');
+          const sourceAspect = img.width / img.height;
+          const destAspect = pos.width / pos.height;
 
-            startBtn.disabled = false;
-        }
-        
-        // --- PHOTOBOOTH FUNCTIONS ---
-        async function startPhotoBooth() {
-            cameraError.classList.add('hidden');
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user', aspectRatio: 4/3 } 
-                });
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    video.play();
-                    welcomeScreen.classList.add('hidden');
-                    photoScreen.classList.remove('hidden');
-                    runPhotoSequence();
-                };
-            } catch (err)
-                {
-                console.error("Camera Error:", err);
-                cameraError.classList.remove('hidden');
-            }
-        }
-        
-        const delay = ms => new Promise(res => setTimeout(res, ms));
+          let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
 
-        async function runPhotoSequence() {
-            for (let i = 0; i < PHOTO_COUNT; i++) {
-                overlay.textContent = `Get Ready...`;
-                photoCounter.textContent = `Photo ${i + 1} of ${PHOTO_COUNT}`;
-                overlay.classList.remove('hidden');
-                await delay(2000);
-                for (let j = COUNTDOWN_SECONDS; j > 0; j--) {
-                    overlay.textContent = j;
-                    await delay(1000);
-                }
-                overlay.textContent = 'SMILE!';
-                await delay(500);
-                capturePhoto();
-                flash.classList.add('flash-animation');
-                setTimeout(() => flash.classList.remove('flash-animation'), 500);
-                await delay(1500);
-            }
-            generateReel();
+          if (sourceAspect > destAspect) {
+            sourceWidth = img.height * destAspect;
+            sourceX = (img.width - sourceWidth) / 2;
+          } else {
+            sourceHeight = img.width / destAspect;
+            sourceY = (img.height - sourceHeight) / 2;
+          }
+
+          ctx.drawImage(
+            img,
+            sourceX, sourceY, sourceWidth, sourceHeight,
+            pos.x, pos.y, pos.width, pos.height
+          );
         }
 
-        function capturePhoto() {
-            captureCanvas.width = video.videoWidth;
-            captureCanvas.height = video.videoHeight;
-            const ctx = captureCanvas.getContext('2d');
-            ctx.translate(video.videoWidth, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-            capturedPhotos.push(captureCanvas.toDataURL('image/jpeg', 0.9));
-        }
+        ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
+      } catch (error) {
+        console.error("Failed to draw reel:", error);
+        qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Error creating image.</div>`;
+        return;
+      }
 
-        function loadImage(src) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = (err) => reject(new Error(`Failed to load image with src: ${src}`));
-                img.src = src;
-            });
-        }
+      const reelDataURL = reelCanvas.toDataURL('image/jpeg', 0.95);
+      resultImage.src = reelDataURL;
+      downloadBtn.href = reelDataURL;
 
-        async function generateReel() {
-            photoScreen.classList.add('hidden');
-            resultScreen.classList.remove('hidden');
-            qrcodeWrapper.innerHTML = `<div class="text-gray-700 text-center">Generating Link...</div>`;
+      try {
+        const fileName = `reels/${Date.now()}.jpg`;
+        const storageRef = ref(storage, fileName);
 
-            const ctx = reelCanvas.getContext('2d');
-            const reelWidth = 1821;
-            const reelHeight = 4096;
-            reelCanvas.width = reelWidth;
-            reelCanvas.height = reelHeight;
-            
-            const photoPositions = [
-                { x: 105, y: 204,  width: 1610, height: 904 },
-                { x: 105, y: 1259, width: 1610, height: 904 },
-                { x: 105, y: 2340, width: 1610, height: 904 }
-            ];
+        const uploadResult = await uploadString(storageRef, reelDataURL, 'data_url');
+        const downloadURL = await getDownloadURL(uploadResult.ref);
 
-            try {
-                let frame;
-                if (selectedFrame === 'assets/frame.png') {
-                    frame = framePreloadImage1;
-                } else if (selectedFrame === 'assets/frame2.png') {
-                    frame = framePreloadImage2;
-                } else {
-                    frame = framePreloadImage3;
-                }
+        const docRef = await addDoc(collection(db, "reels"), {
+          downloadURL: downloadURL,
+          createdAt: serverTimestamp()
+        });
 
-                for (let i = 0; i < PHOTO_COUNT; i++) {
-                    const img = await loadImage(capturedPhotos[i]);
-                    const pos = photoPositions[i];
-                    
-                    const sourceAspect = img.width / img.height;
-                    const destAspect = pos.width / pos.height;
-                    
-                    let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
+        const viewerURL = `${window.location.href.split('?')[0]}?id=${docRef.id}`;
 
-                    if (sourceAspect > destAspect) {
-                        sourceWidth = img.height * destAspect;
-                        sourceX = (img.width - sourceWidth) / 2;
-                    } else {
-                        sourceHeight = img.width / destAspect;
-                        sourceY = (img.height - sourceHeight) / 2;
-                    }
-                    ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, pos.x, pos.y, pos.width, pos.height);
-                }
+        qrcodeWrapper.innerHTML = '';
+        new QRCode(qrcodeWrapper, {
+          text: viewerURL,
+          width: 192,
+          height: 192,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch (e) {
+        console.error("Error uploading to Firebase or creating QR Code: ", e);
+        qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Could not save image to generate link.</div>`;
+      }
+    }
 
-                ctx.drawImage(frame, 0, 0, reelWidth, reelHeight);
+    function restart() {
+      capturedPhotos = [];
+      qrcodeWrapper.innerHTML = '';
+      selectedFrame = null;
 
-            } catch (error) {
-                console.error("Failed to draw reel:", error);
-                qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Error creating image.</div>`;
-                return;
-            }
+      frameOption1.classList.remove('border-yellow-400');
+      frameOption2.classList.remove('border-yellow-400');
+      frameOption3.classList.remove('border-yellow-400');
+      frameOption4.classList.remove('border-yellow-400');
 
-            const reelDataURL = reelCanvas.toDataURL('image/jpeg', 0.95);
-            resultImage.src = reelDataURL;
-            downloadBtn.href = reelDataURL;
-            
-            try {
-                 const fileName = `reels/${Date.now()}.jpg`;
-                 const storageRef = ref(storage, fileName);
-                 const uploadResult = await uploadString(storageRef, reelDataURL, 'data_url');
-                 const downloadURL = await getDownloadURL(uploadResult.ref);
+      startBtn.disabled = true;
 
-                 const docRef = await addDoc(collection(db, "reels"), {
-                    downloadURL: downloadURL,
-                    createdAt: serverTimestamp()
-                });
-                
-                const viewerURL = `${window.location.href.split('?')[0]}?id=${docRef.id}`;
-                
-                qrcodeWrapper.innerHTML = '';
-                new QRCode(qrcodeWrapper, {
-                    text: viewerURL,
-                    width: 192,
-                    height: 192,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.M
-                });
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
 
-            } catch (e) {
-                console.error("Error uploading to Firebase or creating QR Code: ", e);
-                qrcodeWrapper.innerHTML = `<div class="text-red-600 text-center text-sm">Could not save image to generate link.</div>`;
-            }
-        }
-
-        function restart() {
-            capturedPhotos = [];
-            qrcodeWrapper.innerHTML = '';
-            selectedFrame = null;
-            
-            frameOption1.classList.remove('border-yellow-400');
-            frameOption2.classList.remove('border-yellow-400');
-            frameOption3.classList.remove('border-yellow-400');
-            startBtn.disabled = true;
-
-            if (stream) { stream.getTracks().forEach(track => track.stop()); }
-
-            resultScreen.classList.add('hidden');
-            welcomeScreen.classList.remove('hidden');
-        }
-
-    </script>
+      resultScreen.classList.add('hidden');
+      welcomeScreen.classList.remove('hidden');
+    }
+  </script>
 </body>
 </html>
-
-
