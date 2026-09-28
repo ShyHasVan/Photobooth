@@ -37,7 +37,7 @@
                class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
         </div>
         <div>
-          <img id="frame-option-4" src="assets/frame4.png" alt="Frame choice 4"
+          <img id="frame-option-4" src="assets/frame4.png" alt="Frame choice 8"
                class="h-48 md:h-64 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-4 border-transparent">
         </div>
       </div>
@@ -144,17 +144,17 @@
     const qrcodeWrapper = document.getElementById('qrcode-wrapper');
     const cameraError = document.getElementById('camera-error');
 
-    const frameOption1 = document.getElementById('frame-option-1');
-    const frameOption2 = document.getElementById('frame-option-2');
-    const frameOption3 = document.getElementById('frame-option-3');
+    const frameOption1 = document.getElementById('frame-option-5');
+    const frameOption2 = document.getElementById('frame-option-6');
+    const frameOption3 = document.getElementById('frame-option-7');
     // NEW
-    const frameOption4 = document.getElementById('frame-option-4');
+    const frameOption4 = document.getElementById('frame-option-8');
 
-    const framePreloadImage1 = document.getElementById('frame-image-preload-1');
-    const framePreloadImage2 = document.getElementById('frame-image-preload-2');
-    const framePreloadImage3 = document.getElementById('frame-image-preload-3');
+    const framePreloadImage1 = document.getElementById('frame-image-preload-5');
+    const framePreloadImage2 = document.getElementById('frame-image-preload-6');
+    const framePreloadImage3 = document.getElementById('frame-image-preload-7');
     // NEW
-    const framePreloadImage4 = document.getElementById('frame-image-preload-4');
+    const framePreloadImage4 = document.getElementById('frame-image-preload-8');
 
     const captureCanvas = document.getElementById('capture-canvas');
     const reelCanvas = document.getElementById('reel-canvas');
@@ -278,19 +278,19 @@
 
     // --- PHOTOBOOTH INITIALIZATION ---
     function initializeAppUI() {
-      framePreloadImage1.src = `assets/frame.png?v=${new Date().getTime()}`;
-      framePreloadImage2.src = `assets/frame2.png?v=${new Date().getTime()}`;
-      framePreloadImage3.src = `assets/frame3.png?v=${new Date().getTime()}`;
+      framePreloadImage1.src = `assets/frame5.png?v=${new Date().getTime()}`;
+      framePreloadImage2.src = `assets/frame6.png?v=${new Date().getTime()}`;
+      framePreloadImage3.src = `assets/frame7.png?v=${new Date().getTime()}`;
       // NEW
-      framePreloadImage4.src = `assets/frame4.png?v=${new Date().getTime()}`;
+      framePreloadImage4.src = `assets/frame8.png?v=${new Date().getTime()}`;
 
       startBtn.disabled = true;
 
-      frameOption1.addEventListener('click', () => selectFrame('assets/frame.png', frameOption1));
-      frameOption2.addEventListener('click', () => selectFrame('assets/frame2.png', frameOption2));
-      frameOption3.addEventListener('click', () => selectFrame('assets/frame3.png', frameOption3));
+      frameOption1.addEventListener('click', () => selectFrame('assets/frame5.png', frameOption1));
+      frameOption2.addEventListener('click', () => selectFrame('assets/frame6.png', frameOption2));
+      frameOption3.addEventListener('click', () => selectFrame('assets/frame7.png', frameOption3));
       // NEW
-      frameOption4.addEventListener('click', () => selectFrame('assets/frame4.png', frameOption4));
+      frameOption4.addEventListener('click', () => selectFrame('assets/frame8.png', frameOption4));
 
       startBtn.addEventListener('click', startPhotoBooth);
       restartBtn.addEventListener('click', restart);
@@ -396,11 +396,11 @@
 
       try {
         let frame;
-        if (selectedFrame === 'assets/frame.png') {
+        if (selectedFrame === 'assets/frame5.png') {
           frame = framePreloadImage1;
-        } else if (selectedFrame === 'assets/frame2.png') {
+        } else if (selectedFrame === 'assets/frame6.png') {
           frame = framePreloadImage2;
-        } else if (selectedFrame === 'assets/frame3.png') {
+        } else if (selectedFrame === 'assets/frame7.png') {
           frame = framePreloadImage3;
         } else {
           frame = framePreloadImage4; // assets/frame4.png
